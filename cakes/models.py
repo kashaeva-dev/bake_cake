@@ -2,8 +2,9 @@ from django.db import models
 
 
 class Advertisement(models.Model):
-    name = models.CharField(max_length=100, verbose_name='Название кампании', null=True, blank=True)
-    telegram_id = models.IntegerField(max_length=5, verbose_name='Telegram ID кампании')
+    name = models.CharField(max_length=100, verbose_name='Название кампании', null=True)
+    refer_id = models.PositiveSmallIntegerField(max_length=4, verbose_name='Telegram ID кампании')
+    refer_url = models.URLField(verbose_name='Ссылка на кампанию')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата добавления')
 
     def __str__(self):
@@ -15,7 +16,7 @@ class Advertisement(models.Model):
 
 
 class Client(models.Model):
-    chat_id = models.CharField(max_length=20, verbose_name='ID чата клиента')
+    chat_id = models.PositiveBigIntegerField(verbose_name='ID чата клиента')
     first_name = models.CharField(max_length=40, verbose_name='Имя клиента', null=True)
     created_at = models.DateTimeField(verbose_name='Создано', auto_now_add=True)
     personal_data_consent = models.BooleanField(verbose_name='Согласие на обработку персональных данных')
@@ -25,7 +26,7 @@ class Client(models.Model):
                                                       null=True,
                                                       )
     advertisement = models.ForeignKey(Advertisement,
-                                      on_delete=models.CASCADE,
+                                      on_delete=models.PROTECT,
                                       verbose_name='Рекламная кампания',
                                       null=True,
                                       blank=True,
@@ -46,6 +47,7 @@ class Ingredients(models.Model):
     picture = models.ImageField(upload_to='components', verbose_name='Изображение')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
 
+
 class Level(models.Model):
     quantity = models.IntegerField(max_length=2, verbose_name='Количество уровней')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
@@ -59,8 +61,8 @@ class Form(models.Model):
 class Cake(models.Model):
     name = models.CharField(max_length=40, verbose_name='Название торта')
     description = models.TextField(verbose_name='Описание')
-    level = models.ForeignKey(Level, on_delete=models.CASCADE, verbose_name='Количество уровней')
-    form = models.ForeignKey(Form, on_delete=models.CASCADE, verbose_name='Форма')
+    level = models.ForeignKey(Level, on_delete=models.PROTECT, verbose_name='Количество уровней')
+    form = models.ForeignKey(Form, on_delete=models.PROTECT, verbose_name='Форма')
     picture = models.ImageField(upload_to='cakes', verbose_name='Изображение')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
 
@@ -101,4 +103,4 @@ class Order(models.Model):
     total_delivery_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена доставки')
     delivery_man_name = models.CharField(max_length=40, verbose_name='Курьер', null=True, blank=True)
     delivery_man_phonenumber = models.CharField(max_length=40, verbose_name='Номер телефона курьера', null=True, blank=True)
-    status = models.CharField(max_length=40, verbose_name='Статус заказа')
+    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name='Статус заказа')
