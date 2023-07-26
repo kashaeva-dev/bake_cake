@@ -3,7 +3,7 @@ from django.db import models
 
 class Advertisement(models.Model):
     name = models.CharField(max_length=100, verbose_name='Название кампании', null=True)
-    refer_id = models.PositiveSmallIntegerField(max_length=4, verbose_name='Telegram ID кампании')
+    refer_id = models.PositiveSmallIntegerField(verbose_name='Telegram ID кампании')
     refer_url = models.URLField(verbose_name='Ссылка на кампанию')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата добавления')
 
@@ -49,7 +49,7 @@ class Ingredients(models.Model):
 
 
 class Level(models.Model):
-    quantity = models.IntegerField(max_length=2, verbose_name='Количество уровней')
+    quantity = models.PositiveSmallIntegerField(verbose_name='Количество уровней')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
 
 
@@ -63,6 +63,7 @@ class Cake(models.Model):
     description = models.TextField(verbose_name='Описание')
     level = models.ForeignKey(Level, on_delete=models.PROTECT, verbose_name='Количество уровней')
     form = models.ForeignKey(Form, on_delete=models.PROTECT, verbose_name='Форма')
+    weight = models.PositiveSmallIntegerField(verbose_name='Вес, кг')
     picture = models.ImageField(upload_to='cakes', verbose_name='Изображение')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
 
@@ -79,28 +80,67 @@ class DeliveryType(models.Model):
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
 
 
-class Status(models.Model):
+class OrderStatus(models.Model):
     name = models.CharField(max_length=40, verbose_name='Название')
 
 
-class DeliveryInterval(models.Model):
-    start_time = models.TimeField(verbose_name='Начало интервала')
-    end_time = models.TimeField(verbose_name='Конец интервала')
-
-
 class Order(models.Model):
-    client = models.ForeignKey(Client, on_delete=models.CASCADE, verbose_name='Клиент')
-    cake = models.ForeignKey(Cake, on_delete=models.CASCADE, verbose_name='Торт')
+    client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Клиент')
+    cake = models.ForeignKey(Cake, on_delete=models.PROTECT, verbose_name='Торт')
     ingredients = models.ManyToManyField(Ingredients, verbose_name='Ингредиенты')
     inscription = models.CharField(max_length=40, verbose_name='Надпись', null=True, blank=True)
+    cake_comment = models.TextField(verbose_name='Комментарий к торту')
     created_at = models.DateTimeField(verbose_name='Создано', auto_now_add=True)
-    delivery_date = models.DateTimeField(verbose_name='Дата доставки')
-    delivery_type = models.ForeignKey(DeliveryType, on_delete=models.CASCADE, verbose_name='Тип доставки')
-    delivery_interval = models.ForeignKey(DeliveryInterval, on_delete=models.CASCADE, verbose_name='Интервал доставки')
+    status = models.ForeignKey(OrderStatus, on_delete=models.PROTECT, verbose_name='Статус заказа')
+    total_cake_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена торта')
+    delivery_type = models.ForeignKey(DeliveryType, on_delete=models.PROTECT, verbose_name='Тип доставки')
+    total_delivery_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена доставки')
     delivery_address = models.CharField(max_length=40, verbose_name='Адрес доставки')
     delivery_comment = models.TextField(verbose_name='Комментарий к доставке')
-    total_cake_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена торта')
-    total_delivery_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена доставки')
     delivery_man_name = models.CharField(max_length=40, verbose_name='Курьер', null=True, blank=True)
-    delivery_man_phonenumber = models.CharField(max_length=40, verbose_name='Номер телефона курьера', null=True, blank=True)
-    status = models.ForeignKey(Status, on_delete=models.PROTECT, verbose_name='Статус заказа')
+    delivery_man_phonenumber = models.CharField(max_length=40,
+                                                verbose_name='Номер телефона курьера',
+                                                null=True,
+                                                blank=True
+                                                )
+    class Meta:
+        verbose_name = 'Заказ'
+        verbose_name_plural = 'Заказы'
+
+    def __str__(self):
+        delivery_time_obj = self.delivery_time.first()
+        if delivery_time_obj:
+            planned_delivery_date = delivery_time_obj.delivery_date
+            planned_delivery_time = delivery_time_obj.delivery_time.strftime('%H:%M')
+            if self.delivery_address:
+                return f'{self.cake} - {self.cake.weight}: плановая доставка {planned_delivery_date.date} ' \
+                       f'{planned_delivery_time} по адресу: {self.delivery_address}'
+            else:
+                return f'{self.cake}: {self.delivery_type.name}' \
+                       f' {planned_delivery_date.date()} с {planned_delivery_time}'
+        else:
+            if self.delivery_address:
+                return f'{self.cake} - {self.weight}: доставка по адресу: {self.delivery_address}'
+            else:
+                return f'{self.cake}: {self.delivery_type.name}'
+
+
+class DeliveryTime(models.Model):
+    DELIVERY_STATUS_CHOICES = (
+        ('initial', 'План'),
+        ('changed', 'Изменение'),
+        ('delivered', 'Факт'),
+    )
+    order = models.ForeignKey(Order,
+                              on_delete=models.PROTECT,
+                              verbose_name='Заказ',
+                              related_name='delivery_time'
+                              )
+    delivery_date = models.DateTimeField(verbose_name='Дата доставки')
+    delivery_time = models.TimeField(verbose_name='Время доставки')
+    delivery_status = models.CharField(max_length=40,
+                                       verbose_name='Статус доставки',
+                                       choices=DELIVERY_STATUS_CHOICES,
+                                       )
+    created_at = models.DateTimeField(verbose_name='Создано', auto_now_add=True)
+

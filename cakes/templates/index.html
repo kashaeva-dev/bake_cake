@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мобильный сайт с карточками тортов</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6 col-lg-4">
+                <div class="card">
+                    <img src="{% static 'img/cake1.jpg' %}" class="card-img-top cake-image" alt="Торт 1">
+                    <div class="card-body">
+                        <h5 class="card-title">Ванильный чизкейк</h5>
+                        <p class="card-text">запеченый чизкейк с малиновым крем-чизом и миксом свежих ягод</p>
+                        <button class="btn" id="btn1">Выбрать</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="card">
+                    <img src="{% static 'img/cake5.jpg' %}" class="card-img-top cake-image" alt="Торт 2">
+                    <div class="card-body">
+                        <h5 class="card-title">Pancake Local</h5>
+                        <p class="card-text">шоколадный блинный торт с сырно-сливочным кремом, молочным шоколадом и ягодами</p>
+                        <button class="btn" id="btn2">Выбрать</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.7/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="{% static 'js/cakes.js' %}"></script>
+</body>
+</html>

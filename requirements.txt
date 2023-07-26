@@ -1,2 +1,4 @@
 Django==4.2.3
 aiogram==2.25.1
+Pillow==10.0.0
+environs==9.5.0
