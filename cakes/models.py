@@ -68,8 +68,8 @@ class Cake(models.Model):
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
 
     class Meta:
-        verbose_name = 'Стандартный торт'
-        verbose_name_plural = 'Стандартные торты'
+        verbose_name = 'Tорт'
+        verbose_name_plural = 'Tорты'
 
     def __str__(self):
         return f'{self.name}'
