@@ -24,6 +24,9 @@ from conf import settings
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.index, name='index'),
+    path('toppings/', views.toppings, name='toppings'),
+    path('berries/', views.berries, name='berries'),
+    path('decoration/', views.decoration, name='decoration'),
 ]
 
 if settings.DEBUG:

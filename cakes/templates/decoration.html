@@ -4,20 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Топпинги</title>
+    <title>Декор</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
     <div class="container">
         <div class="row">
-            {% for topping in toppings %}
+            {% for decoration in decoration %}
             <div class="col-md-6 col-lg-4">
                 <div class="card">
-                    <img src="{{ topping.picture.url }}" class="card-img-top cake-image" alt="{{topping.name}}">
+                    <img src="{{ decoration.picture.url }}" class="card-img-top cake-image" alt="{{decoration.name}}">
                     <div class="card-body">
-                        <h5 class="card-title">{{ topping.name }}</h5>
-                        <button class="btn" id="btn1">Выбрать</button>
+                        <h5 class="card-title">{{ decoration.name }}</h5>
+                        <button class="btn" id="btn{{ decoration.pk }}">Выбрать</button>
                     </div>
                 </div>
             </div>

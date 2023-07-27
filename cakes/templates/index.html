@@ -14,11 +14,11 @@
             {% for cake in cakes %}
             <div class="col-md-6 col-lg-4">
                 <div class="card">
-                    <img src="{{ cake.picture.url }}" class="card-img-top cake-image" alt="{{cake.name}}">
+                    <img src="{{ cake.picture.url }}" class="card-img-top cake-image" alt="{{ cake.name }}">
                     <div class="card-body">
                         <h5 class="card-title">{{ cake.name }}</h5>
                         <p class="card-text">{{ cake.description }}</p>
-                        <button class="btn" id="btn1">Выбрать</button>
+                        <button class="btn select-button" data-cake-id="{{ cake.pk }}">Выбрать</button>
                     </div>
                 </div>
             </div>
