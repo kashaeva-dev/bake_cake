@@ -41,21 +41,58 @@ class Client(models.Model):
         return f'{self.chat_id}: {self.first_name}'
 
 
+class IngredientCategory(models.Model):
+    name = models.CharField(max_length=40, verbose_name='Название категории ингредиентов')
+    optional = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = 'Категории ингредиентов'
+        verbose_name_plural = 'Категории ингредиентов'
+
+    def __str__(self):
+        return self.name
+
+
 class Ingredients(models.Model):
-    category = models.CharField(max_length=40, verbose_name='Категория')
+    category = models.ForeignKey(IngredientCategory,
+                                 on_delete=models.PROTECT,
+                                 verbose_name='Категория',
+                                 related_name='ingredients'
+                                 )
     name = models.CharField(max_length=40, verbose_name='Название')
-    picture = models.ImageField(upload_to='components', verbose_name='Изображение')
+    picture = models.ImageField(upload_to='ingredients', verbose_name='Изображение')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
+
+    class Meta:
+        verbose_name = 'Ингредиенты'
+        verbose_name_plural = 'Ингредиенты'
+
+    def __str__(self):
+        return self.name
 
 
 class Level(models.Model):
     quantity = models.PositiveSmallIntegerField(verbose_name='Количество уровней')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
 
+    class Meta:
+        verbose_name = 'Уровень'
+        verbose_name_plural = 'Уровни'
+
+    def __str__(self):
+        return self.quantity
+
 
 class Form(models.Model):
     name = models.CharField(max_length=40, verbose_name='Название формы')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
+
+    class Meta:
+        verbose_name = 'Форма'
+        verbose_name_plural = 'Формы'
+
+    def __str__(self):
+        return self.name
 
 
 class Cake(models.Model):
@@ -63,7 +100,7 @@ class Cake(models.Model):
     description = models.TextField(verbose_name='Описание')
     level = models.ForeignKey(Level, on_delete=models.PROTECT, verbose_name='Количество уровней')
     form = models.ForeignKey(Form, on_delete=models.PROTECT, verbose_name='Форма')
-    weight = models.PositiveSmallIntegerField(verbose_name='Вес, кг')
+    weight = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Вес')
     picture = models.ImageField(upload_to='cakes', verbose_name='Изображение')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
 
@@ -72,16 +109,29 @@ class Cake(models.Model):
         verbose_name_plural = 'Tорты'
 
     def __str__(self):
-        return f'{self.name}'
+        return self.name
 
 
 class DeliveryType(models.Model):
     name = models.CharField(max_length=40, verbose_name='Название')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
 
+    class Meta:
+        verbose_name = 'Тип доставки'
+        verbose_name_plural = 'Типы доставки'
+
+    def __str__(self):
+        return self.name
 
 class OrderStatus(models.Model):
     name = models.CharField(max_length=40, verbose_name='Название')
+
+    class Meta:
+        verbose_name = 'Статус заказа'
+        verbose_name_plural = 'Статусы заказа'
+
+    def __str__(self):
+        return self.name
 
 
 class Order(models.Model):
@@ -144,3 +194,9 @@ class DeliveryTime(models.Model):
                                        )
     created_at = models.DateTimeField(verbose_name='Создано', auto_now_add=True)
 
+    class Meta:
+        verbose_name = 'Время доставки'
+        verbose_name_plural = 'Время доставки'
+
+    def __str__(self):
+        return f'{self.delivery_date} {self.delivery_time}'

@@ -10,6 +10,7 @@ from cakes.models import (
     OrderStatus,
     Order,
     DeliveryTime,
+    IngredientCategory,
 )
 
 
@@ -22,3 +23,4 @@ admin.site.register(DeliveryType)
 admin.site.register(OrderStatus)
 admin.site.register(Order)
 admin.site.register(DeliveryTime)
+admin.site.register(IngredientCategory)
