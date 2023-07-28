@@ -178,7 +178,7 @@ class Order(models.Model):
 class DeliveryTime(models.Model):
     DELIVERY_STATUS_CHOICES = (
         ('initial', 'План'),
-        ('changed', 'Изменение'),
+        ('changed', 'Корректировка'),
         ('delivered', 'Факт'),
     )
     order = models.ForeignKey(Order,
