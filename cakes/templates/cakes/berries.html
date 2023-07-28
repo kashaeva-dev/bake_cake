@@ -4,21 +4,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мобильный сайт с карточками тортов</title>
+    <title>Ягоды</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'cakes/css/style.css' %}">
 </head>
 <body>
     <div class="container">
         <div class="row">
-            {% for cake in cakes %}
+            {% for berry in berries %}
             <div class="col-md-6 col-lg-4">
                 <div class="card">
-                    <img src="{{ cake.picture.url }}" class="card-img-top cake-image" alt="{{cake.name}}">
+                    <img src="{{ berry.picture.url }}" class="card-img-top cake-image" alt="{{ berry.name }}">
                     <div class="card-body">
-                        <h5 class="card-title">{{ cake.name }}</h5>
-                        <p class="card-text">{{ cake.description }}</p>
-                        <button class="btn" id="btn1">Выбрать</button>
+                        <h5 class="card-title">{{ berry.name }}</h5>
+                        <table class="table">
+                          <tbody>
+                            <tr>
+                              <td class="align-middle"><b>{{ berry.current_price|floatformat }} руб.</b></td>
+                              <td><button class="btn select-button" data-cake-id="berry_{{ berry.pk }}">Выбрать</button></td>
+                            </tr>
+                          </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -27,8 +33,7 @@
     </div>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.7/dist/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script src="{% static 'js/cakes.js' %}"></script>
+    <script src="{% static 'cakes/js/cakes.js' %}"></script>
 </body>
 </html>

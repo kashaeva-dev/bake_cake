@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Selected cake:', selectedCake);
         });
     });
-
 });
 
 Telegram.WebApp.onEvent("mainButtonClicked", function(){
