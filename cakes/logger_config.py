@@ -18,5 +18,9 @@ logger_config = {
             'handlers': ['console'],
             'level': 'DEBUG',
         },
+        'user_handlers_logger': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
     },
 }

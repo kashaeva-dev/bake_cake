@@ -5,13 +5,12 @@ tg.expand();
 tg.MainButton.textColor = "#FFFFFF";
 tg.MainButton.color = "#2cab37";
 
-let item = "";
+let selectedCake = "";
 
 console.log('js is working 3');
 
 document.addEventListener('DOMContentLoaded', function() {
 
-    let selectedCake = "";
     const selectButtons = document.querySelectorAll('.select-button');
 
     selectButtons.forEach(function(button) {
@@ -28,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Selected cake:', selectedCake);
         });
     });
+
 });
 
 Telegram.WebApp.onEvent("mainButtonClicked", function(){

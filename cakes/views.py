@@ -10,21 +10,22 @@ from .models import (
 # Create your views here.
 def index(request):
     cakes = Cake.objects.all()
-    return render(request, 'index.html', context={'cakes': cakes})
+    return render(request, 'cakes/index.html', context={'cakes': cakes})
 
 
 def toppings(request):
     category = IngredientCategory.objects.filter(name='Топпинг')[0]
     toppings = Ingredients.objects.filter(category=category)
-    return render(request, 'toppings.html', context={'toppings': toppings})
+    return render(request, 'cakes/toppings.html', context={'toppings': toppings})
 
 
 def berries(request):
     category = IngredientCategory.objects.filter(name='Ягоды')[0]
     berries = Ingredients.objects.filter(category=category)
-    return render(request, 'berries.html', context={'berries': berries})
+    return render(request, 'cakes/berries.html', context={'berries': berries})
+
 
 def decoration(request):
     category = IngredientCategory.objects.filter(name='Декор')[0]
     decorations = Ingredients.objects.filter(category=category)
-    return render(request, 'decoration.html', context={'decorations': decorations})
+    return render(request, 'cakes/decoration.html', context={'decorations': decorations})
