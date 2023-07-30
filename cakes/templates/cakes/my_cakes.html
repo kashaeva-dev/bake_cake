@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мобильный сайт с карточками тортов</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'cakes/css/style.css' %}">
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            {% for cake in cakes %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card">
+                    <img src="{{ cake.picture.url }}" class="card-img-top cake-image" alt="{{ cake.name }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ cake.name }}</h5>
+                        <p class="card-text">{{ cake.description }}</p>
+                        <table class="table">
+                          <tbody>
+                            <tr>
+                              <td class="align-middle">{{ cake.weight }} кг.</td>
+                              <td class="align-middle"><b>{{ cake.current_price|floatformat }} руб.</b></td>
+                              <td><button class="btn select-button" data-cake-id="cake_{{ cake.pk }}">Выбрать</button></td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="{% static 'cakes/js/cakes.js' %}"></script>
+</body>
+</html>

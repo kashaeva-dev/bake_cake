@@ -17,11 +17,12 @@ from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
 
 from cakes.logger_config import logger_config
 from cakes.management.commands.bot.keyboards.user_keyboards import (
-    get_order_keyword,
+    get_order_keyboard,
     get_just_main_menu_keyboard,
     get_no_text_keyboard,
     get_no_comment_keyboard,
     get_month_keyboard, get_delivery_type_keyboard, get_delivery_time_keyboard, get_conformation_keyboard,
+    choose_topping_keyboard, get_choosing_order_from_keyboard,
 )
 from cakes.models import (
     Cake,
@@ -53,13 +54,40 @@ class OrderFSM(StatesGroup):
     conformation = State()
 
 
+class CreateCakeFSM(StatesGroup):
+    add_topping = State()
+    add_berries = State()
+    add_decor = State()
+
+
 async def start(message: types.Message):
     logger.info(f"message: {message.from_user.id}")
-    await OrderFSM.web_app.set()
     await bot.send_message(message.from_user.id,
+                           "Пожалуйста, выберите один из пунктов меню:",
+                           reply_markup=await get_choosing_order_from_keyboard(),
+                           )
+
+
+async def start_choose_cake_handler(callback: types.CallbackQuery):
+    logger.info('Start choose cake handler')
+    await OrderFSM.web_app.set()
+    await bot.send_message(callback.from_user.id,
                            "Чтобы выбрать 🎂<b>торт</b> перейдите в один из разделов "
                            "каталога по дополнительной кнопке клавиатуры ⬇. ",
-                           reply_markup=await get_order_keyword(),
+                           reply_markup=await get_order_keyboard(),
+                           parse_mode='HTML',
+                           )
+
+
+async def start_create_cake_handler(callback: types.CallbackQuery):
+    logger.info("Start create cake handler")
+    await CreateCakeFSM.add_topping.set()
+    await bot.send_message(callback.from_user.id,
+                           "Вначале нужно выбрать <b>топпинг.</b>\n\n "
+                           "Перейдите в каталог по дополнительной кнопке клавиатуры ⬇ "
+                           "и <b>выберите один</b> из возможных топпингов. ",
+                           reply_markup=await choose_topping_keyboard(),
+                           parse_mode='HTML',
                            )
 
 
@@ -86,6 +114,19 @@ async def web_app_data_handler(web_app_message, state: FSMContext):
                                    "Стоимость добавления надписи - <b>500 руб.</b>",
                                    reply_markup=await get_no_text_keyboard(),
                                    parse_mode='HTML')
+        case 'topping':
+            topping = await sync_to_async(Ingredients.objects.get)(id=item_id)
+            async with state.proxy() as data:
+                data['topping'] = topping
+            await CreateCakeFSM.add_berries.set()
+            await bot.send_message(chat_id,
+                                   f"Вы выбрали топпинг <b>{topping.name}</b>.\n\n"
+                                   "Теперь можно выбрать ягоды, для этого, перейдите в "
+                                   "каталог по дополнительной кнопке клавиатуры ⬇ и выберите одну из возможных ягод.",
+                                   reply_markup=await get_choose_berry_keyboard(),
+                                   parse_mode='HTML')
+
+
 
 
 add_comment_text = "💬 Если хотите, Вы можете написать "\
@@ -333,18 +374,26 @@ async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
             else:
                 delivery_time = await sync_to_async(DeliveryTime.objects.create)(
                     order=order,
-                    delivery_date=timezone.make_aware(data['delivery_date'], moscow_tz),
-                    delivery_time=timezone.make_aware(data['delivery_time'], moscow_tz),
+                    delivery_date=data['delivery_date'],
+                    delivery_time=data['delivery_time'],
                     delivery_status='initial',
                 )
     except:
-        logger.info(f'Ошибка записи в базу данных, data: {data}')
+        logger.error(f'Ошибка записи в базу данных, data: {data}', exc_info=True)
+        await callback.message.answer(
+            "К сожалению, не получилось оформить Ваш заказ!\n\n"
+            "Пожалуйста, свяжитесь с нами по телефону: +7 (495) 456-56-56.",
+            reply_markup=await get_just_main_menu_keyboard(),
+            parse_mode='HTML',
+        )
     else:
         await callback.message.answer(
             f"Ваш заказ <b>№{ order.pk }</b> успешно создан!",
             reply_markup=await get_just_main_menu_keyboard(),
             parse_mode='HTML',
         )
+    finally:
+        await  state.finish()
 
 
 def register_user_handlers(dp: Dispatcher) -> None:
@@ -384,6 +433,14 @@ def register_user_handlers(dp: Dispatcher) -> None:
     dp.register_callback_query_handler(confirm_order,
                                        lambda callback_query: callback_query.data == 'confirm_order',
                                        state=OrderFSM.conformation,
+                                       )
+    dp.register_callback_query_handler(start_create_cake_handler,
+                                lambda callback_query: callback_query.data == 'start_creating_cake',
+                                state='*',
+                                )
+    dp.register_callback_query_handler(start_choose_cake_handler,
+                                       lambda callback_query: callback_query.data == 'choose_cake',
+                                       state='*',
                                        )
 
 

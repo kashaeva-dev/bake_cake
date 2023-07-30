@@ -29,3 +29,7 @@ def decoration(request):
     category = IngredientCategory.objects.filter(name='Декор')[0]
     decorations = Ingredients.objects.filter(category=category)
     return render(request, 'cakes/decoration.html', context={'decorations': decorations})
+
+
+def my_cakes(request):
+    return render(request, 'cakes/my_cakes.html')

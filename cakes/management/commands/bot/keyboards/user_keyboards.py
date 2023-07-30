@@ -128,12 +128,39 @@ async def get_no_comment_keyboard():
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
+async def get_choosing_order_from_keyboard():
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(text='Выбрать торт из каталога', callback_data='choose_cake'),
+        ],
+        [
+            InlineKeyboardButton(text='Создать свой торт', callback_data='start_creating_cake'),
+        ],
+        [
+            InlineKeyboardButton(text='Главное меню', callback_data='main_menu'),
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
-async def get_order_keyword():
+
+async def get_order_keyboard():
     keyboard=[
         [KeyboardButton(text="🍰 Стандартные торты", web_app=WebAppInfo(url="https://bakecake.6f6e69.xyz/")), ],
         [KeyboardButton(text="🛒 Из моих заказов", web_app=WebAppInfo(url="https://bakecake.6f6e69.xyz/my_cakes/")), ],
-        [KeyboardButton(text="🧑‍🍳 Создать свой торт", callback_data="start_create_cake"), ],
+    ]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+async def choose_topping_keyboard():
+    keyboard=[
+        [KeyboardButton(text="Выбрать топпинг", web_app=WebAppInfo(url="https://bakecake.6f6e69.xyz/toppings")), ],
+    ]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+async def choose_berry_keyboard():
+    keyboard=[
+        [KeyboardButton(text="Выбрать ягоды", web_app=WebAppInfo(url="https://bakecake.6f6e69.xyz/berries")), ],
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 

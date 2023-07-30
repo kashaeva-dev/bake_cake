@@ -1,3 +1,5 @@
+import datetime
+
 from django.db import models
 
 
@@ -163,16 +165,17 @@ class Order(models.Model):
         delivery_time_obj = self.delivery_time.first()
         if delivery_time_obj:
             planned_delivery_date = delivery_time_obj.delivery_date
-            planned_delivery_time = delivery_time_obj.delivery_time.strftime('%H:%M')
+            planned_delivery_start_time = delivery_time_obj.delivery_time
+            planned_delivery_end_time = datetime.time((planned_delivery_start_time.hour + 2), 0).strftime("%H:%M")
             if self.delivery_address:
-                return f'{self.cake} - {self.cake.weight}: плановая доставка {planned_delivery_date.date} ' \
-                       f'{planned_delivery_time} по адресу: {self.delivery_address}'
+                return f'{self.cake}: плановая доставка {planned_delivery_date} ' \
+                       f'{planned_delivery_start_time.strftime("%H:%M")} - {planned_delivery_end_time} по адресу: {self.delivery_address}'
             else:
                 return f'{self.cake}: {self.delivery_type.name}' \
-                       f' {planned_delivery_date.date()} с {planned_delivery_time}'
+                       f' {planned_delivery_date}'
         else:
             if self.delivery_address:
-                return f'{self.cake} - {self.weight}: доставка по адресу: {self.delivery_address}'
+                return f'{self.cake}: доставка по адресу: {self.delivery_address}'
             else:
                 return f'{self.cake}: {self.delivery_type.name}'
 
