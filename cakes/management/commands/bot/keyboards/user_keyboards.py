@@ -143,12 +143,14 @@ async def get_delivery_type_keyboard():
     delivery_types = await sync_to_async(DeliveryType.objects.all)()
     inline_keyboard = []
     async for delivery_type in delivery_types:
+        if delivery_type.name == 'Самовывоз':
+            delivery_text = 'Самовывоз (м. Пражская, бесплатно)'
+        else:
+            delivery_text = f'{delivery_type.name} - {int(delivery_type.current_price)} р.'
         delivery_type_keyboard = [
             [
-                InlineKeyboardButton(text=f"{delivery_type.name}",
+                InlineKeyboardButton(text=delivery_text,
                                      callback_data=f"delivery_type_{delivery_type.id}"),
-                InlineKeyboardButton(text=f"{delivery_type.price} руб.",
-                                     callback_data="ignore"),
             ]
         ]
         inline_keyboard += delivery_type_keyboard

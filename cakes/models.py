@@ -138,7 +138,7 @@ class Order(models.Model):
     client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Клиент')
     cake = models.ForeignKey(Cake, on_delete=models.PROTECT, verbose_name='Торт')
     ingredients = models.ManyToManyField(Ingredients, verbose_name='Ингредиенты')
-    inscription = models.CharField(max_length=40, verbose_name='Надпись', null=True, blank=True)
+    text = models.CharField(max_length=40, verbose_name='Надпись', null=True, blank=True)
     cake_comment = models.TextField(verbose_name='Комментарий к торту')
     created_at = models.DateTimeField(verbose_name='Создано', auto_now_add=True)
     status = models.ForeignKey(OrderStatus, on_delete=models.PROTECT, verbose_name='Статус заказа')
@@ -147,6 +147,8 @@ class Order(models.Model):
     total_delivery_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена доставки')
     delivery_address = models.CharField(max_length=40, verbose_name='Адрес доставки')
     delivery_comment = models.TextField(verbose_name='Комментарий к доставке')
+    contact_phone = models.CharField(max_length=40, verbose_name='Контактный телефон', null=True, blank=True)
+    contact_name = models.CharField(max_length=40, verbose_name='Контактное лицо', null=True, blank=True)
     delivery_man_name = models.CharField(max_length=40, verbose_name='Курьер', null=True, blank=True)
     delivery_man_phonenumber = models.CharField(max_length=40,
                                                 verbose_name='Номер телефона курьера',
@@ -186,7 +188,7 @@ class DeliveryTime(models.Model):
                               verbose_name='Заказ',
                               related_name='delivery_time'
                               )
-    delivery_date = models.DateTimeField(verbose_name='Дата доставки')
+    delivery_date = models.DateField(verbose_name='Дата доставки')
     delivery_time = models.TimeField(verbose_name='Время доставки')
     delivery_status = models.CharField(max_length=40,
                                        verbose_name='Статус доставки',

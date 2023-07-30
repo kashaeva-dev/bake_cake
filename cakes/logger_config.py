@@ -12,7 +12,7 @@ logger_config = {
             'formatter': 'std_format',
             'level': 'INFO',
         },
-        },
+    },
     'loggers': {
         'bot_logger': {
             'handlers': ['console'],
