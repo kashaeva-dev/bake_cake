@@ -82,7 +82,7 @@ class Level(models.Model):
         verbose_name_plural = 'Уровни'
 
     def __str__(self):
-        return self.quantity
+        return str(self.quantity)
 
 
 class Form(models.Model):
@@ -99,11 +99,12 @@ class Form(models.Model):
 
 class Cake(models.Model):
     name = models.CharField(max_length=40, verbose_name='Название торта')
-    description = models.TextField(verbose_name='Описание')
+    description = models.TextField(verbose_name='Описание', null=True, blank=True)
     level = models.ForeignKey(Level, on_delete=models.PROTECT, verbose_name='Количество уровней')
     form = models.ForeignKey(Form, on_delete=models.PROTECT, verbose_name='Форма')
-    weight = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Вес')
-    picture = models.ImageField(upload_to='cakes', verbose_name='Изображение')
+    weight = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Вес', null=True, blank=True)
+    picture = models.ImageField(upload_to='cakes', verbose_name='Изображение', null=True, blank=True)
+    standard = models.BooleanField(default=True, verbose_name='Стандартный')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
 
     class Meta:
@@ -111,7 +112,8 @@ class Cake(models.Model):
         verbose_name_plural = 'Tорты'
 
     def __str__(self):
-        return self.name
+
+        return f'{self.name} (уровней: {self.level.quantity}, форма: {self.form.name})'
 
 
 class DeliveryType(models.Model):
@@ -138,7 +140,7 @@ class OrderStatus(models.Model):
 
 class Order(models.Model):
     client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Клиент')
-    cake = models.ForeignKey(Cake, on_delete=models.PROTECT, verbose_name='Торт')
+    cake = models.ForeignKey(Cake, on_delete=models.PROTECT, verbose_name='Торт', null=True, blank=True)
     ingredients = models.ManyToManyField(Ingredients, verbose_name='Ингредиенты')
     text = models.CharField(max_length=40, verbose_name='Надпись', null=True, blank=True)
     cake_comment = models.TextField(verbose_name='Комментарий к торту')

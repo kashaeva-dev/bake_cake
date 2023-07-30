@@ -27,6 +27,7 @@ urlpatterns = [
     path('toppings/', views.toppings, name='toppings'),
     path('berries/', views.berries, name='berries'),
     path('decoration/', views.decoration, name='decoration'),
+    path('my_cakes/<str:chat_id>', views.my_cakes, name='my_cakes'),
 ]
 
 if settings.DEBUG:

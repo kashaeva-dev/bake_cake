@@ -3,7 +3,7 @@ from django.shortcuts import render
 from .models import (
     Cake,
     Ingredients,
-    IngredientCategory,
+    IngredientCategory, Client, Order,
 )
 
 
@@ -31,5 +31,9 @@ def decoration(request):
     return render(request, 'cakes/decoration.html', context={'decorations': decorations})
 
 
-def my_cakes(request):
-    return render(request, 'cakes/my_cakes.html')
+def my_cakes(request, chat_id):
+    client = Client.objects.get(chat_id=chat_id)
+    client_cakes_ids = Order.objects.filter(client=client).values_list('cake', flat=True)
+    client_cakes = Cake.objects.filter(id__in=client_cakes_ids).distinct()
+
+    return render(request, 'cakes/my_cakes.html', context={'cakes': client_cakes})

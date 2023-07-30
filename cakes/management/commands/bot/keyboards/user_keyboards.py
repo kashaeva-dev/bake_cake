@@ -12,7 +12,7 @@ from aiogram.types import (
 from asgiref.sync import sync_to_async
 
 from cakes.logger_config import logger_config
-from cakes.models import DeliveryType
+from cakes.models import DeliveryType, Level, Form
 
 logger = logging.getLogger("user_keyboards_logger")
 
@@ -71,6 +71,10 @@ async def get_month_keyboard(month, year):
     else:
         logger.debug('Not current month')
         filtered_calendar = month_calendar
+    if filtered_calendar == []:
+        next_month = (month + 1) % 12
+        next_month_year = year + (month + 1) // 12
+        return await get_month_keyboard(next_month, next_month_year)
     for week in filtered_calendar:
         calendar_keyboard.row()
         for day in week:
@@ -144,23 +148,77 @@ async def get_choosing_order_from_keyboard():
 
 
 async def get_order_keyboard():
+    # my_cakes_web_app_url = f"https://bakecake.6f6e69.xyz/my_cakes/{chat_id}"
     keyboard=[
-        [KeyboardButton(text="🍰 Стандартные торты", web_app=WebAppInfo(url="https://bakecake.6f6e69.xyz/")), ],
-        [KeyboardButton(text="🛒 Из моих заказов", web_app=WebAppInfo(url="https://bakecake.6f6e69.xyz/my_cakes/")), ],
+        [KeyboardButton(text="🍰 Стандартные торты", web_app=WebAppInfo(url="https://bit.ly/bakecake_cakes")), ],
+        # [KeyboardButton(text="🛒 Из моих заказов", web_app=WebAppInfo(url="https://bakecake.6f6e69.xyz/my_cakes/")), ],
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
-async def choose_topping_keyboard():
+async def get_choose_level_keyboard():
+    logger.debug("get_choose_level_keyboard")
+    levels = await sync_to_async(Level.objects.all)()
+    inline_keyboard = []
+    async for level in levels:
+        delivery_type_keyboard = [
+            [
+                InlineKeyboardButton(text=f'{level.quantity}', callback_data=f"level_{level.id}"),
+                InlineKeyboardButton(text=f'{level.current_price} руб.', callback_data=f"level_{level.id}"),
+            ]
+        ]
+        inline_keyboard += delivery_type_keyboard
+
+    main_menu_keyboard = [
+                [
+                    InlineKeyboardButton(text='Главное меню', callback_data='main_menu'),
+                ]
+            ]
+    inline_keyboard += main_menu_keyboard
+
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_choose_form_keyboard():
+    logger.debug("get_choose_form_keyboard")
+    forms = await sync_to_async(Form.objects.all)()
+    inline_keyboard = []
+    async for form in forms:
+        delivery_type_keyboard = [
+            [
+                InlineKeyboardButton(text=f'{form.name}', callback_data=f"form_{form.id}"),
+                InlineKeyboardButton(text=f'{form.current_price} руб.', callback_data=f"form_{form.id}"),
+            ]
+        ]
+        inline_keyboard += delivery_type_keyboard
+
+    main_menu_keyboard = [
+                [
+                    InlineKeyboardButton(text='Главное меню', callback_data='main_menu'),
+                ]
+            ]
+    inline_keyboard += main_menu_keyboard
+
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+async def get_choose_topping_keyboard():
     keyboard=[
-        [KeyboardButton(text="Выбрать топпинг", web_app=WebAppInfo(url="https://bakecake.6f6e69.xyz/toppings")), ],
+        [KeyboardButton(text="Выбрать топпинг", web_app=WebAppInfo(url="https://bit.ly/bakecake_toppings")), ],
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
-async def choose_berry_keyboard():
+async def get_choose_berry_keyboard():
     keyboard=[
-        [KeyboardButton(text="Выбрать ягоды", web_app=WebAppInfo(url="https://bakecake.6f6e69.xyz/berries")), ],
+        [KeyboardButton(text="Выбрать ягоды", web_app=WebAppInfo(url="https://bit.ly/bakecake_berries")), ],
+        [KeyboardButton(text="Без ягод"), ],
+    ]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+async def get_choose_decor_keyboard():
+    keyboard=[
+        [KeyboardButton(text="Выбрать декор", web_app=WebAppInfo(url="https://bit.ly/bakecake_decoration")), ],
+        [KeyboardButton(text="Без декора"), ],
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 

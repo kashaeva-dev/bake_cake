@@ -13,7 +13,6 @@ from environs import Env
 
 from aiogram import Dispatcher, Bot, types
 from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
-from telegram_bot_calendar import DetailedTelegramCalendar, LSTEP
 
 from cakes.logger_config import logger_config
 from cakes.management.commands.bot.keyboards.user_keyboards import (
@@ -21,12 +20,17 @@ from cakes.management.commands.bot.keyboards.user_keyboards import (
     get_just_main_menu_keyboard,
     get_no_text_keyboard,
     get_no_comment_keyboard,
-    get_month_keyboard, get_delivery_type_keyboard, get_delivery_time_keyboard, get_conformation_keyboard,
-    choose_topping_keyboard, get_choosing_order_from_keyboard,
+    get_month_keyboard,
+    get_delivery_type_keyboard,
+    get_delivery_time_keyboard,
+    get_conformation_keyboard,
+    get_choosing_order_from_keyboard,
+    get_choose_topping_keyboard,
+    get_choose_berry_keyboard, get_choose_decor_keyboard, get_choose_level_keyboard, get_choose_form_keyboard,
 )
 from cakes.models import (
     Cake,
-    Ingredients, DeliveryType, Client, Order, OrderStatus, DeliveryTime,
+    Ingredients, DeliveryType, Client, Order, OrderStatus, DeliveryTime, Form, Level,
 )
 from conf.settings import BASE_DIR
 
@@ -55,6 +59,8 @@ class OrderFSM(StatesGroup):
 
 
 class CreateCakeFSM(StatesGroup):
+    choose_level = State()
+    choose_form = State()
     add_topping = State()
     add_berries = State()
     add_decor = State()
@@ -81,13 +87,99 @@ async def start_choose_cake_handler(callback: types.CallbackQuery):
 
 async def start_create_cake_handler(callback: types.CallbackQuery):
     logger.info("Start create cake handler")
-    await CreateCakeFSM.add_topping.set()
+    await CreateCakeFSM.choose_level.set()
     await bot.send_message(callback.from_user.id,
-                           "Вначале нужно выбрать <b>топпинг.</b>\n\n "
+                           "Вначале нужно выбрать <b>количество уровней.</b>\n\n",
+                           reply_markup=await get_choose_level_keyboard(),
+                           parse_mode='HTML',
+                           )
+
+
+async def choose_level_handler(callback: types.CallbackQuery, state: FSMContext):
+    logger.info('Choose level handler')
+    level_id = callback.data.split('_')[-1]
+    level = await sync_to_async(Level.objects.get)(id=level_id)
+    await CreateCakeFSM.choose_form.set()
+    async with state.proxy() as data:
+        data['level'] = level
+        data['total_cake_price'] = level.current_price
+    await callback.message.edit_text(f"Вы выбрали <b>количество уровней</b>: {level.quantity}\n\n"
+                                     f"Общая стоимость: {level.current_price} руб.\n\n"
+                                     "Теперь выберите <b>форму</b> торта. ",
+                                     reply_markup=await get_choose_form_keyboard(),
+                                     parse_mode='HTML',
+                                     )
+
+
+async def choose_form_handler(callback: types.CallbackQuery, state: FSMContext):
+    logger.info('Choose form handler')
+    form_id = callback.data.split('_')[-1]
+    form = await sync_to_async(Form.objects.get)(id=form_id)
+    await CreateCakeFSM.add_topping.set()
+    async with state.proxy() as data:
+        data['form'] = form
+        data['total_cake_price'] += form.current_price
+        cake, created = await sync_to_async(Cake.objects.get_or_create)(form=form,
+                                                                  level=data['level'],
+                                                                  name='Заказной',
+                                                                  defaults={
+                                                                      'current_price': data['total_cake_price'],
+                                                                      'standard': False,
+                                                                  })
+        logger.info(f"cake: {cake.name} {created}")
+        if not created:
+            cake.current_price = int(data['total_cake_price'])
+            await sync_to_async(cake.save)()
+            logger.info(f"Price was changed to {cake.current_price}")
+        data['cake'] = cake
+        data['standard'] = cake.standard
+        total_cake_price = data['total_cake_price']
+    logger.info(f"total_cake_price: {total_cake_price}")
+    await bot.send_message(callback.from_user.id,
+                           f"Вы выбрали форму: <b>{form.name}</b>\n\n"
+                           f"Общая стоимость: <b>{total_cake_price}</b> руб.\n\n"
+                           "Теперь нужно выбрать <b>топпинг.</b>\n\n"
                            "Перейдите в каталог по дополнительной кнопке клавиатуры ⬇ "
                            "и <b>выберите один</b> из возможных топпингов. ",
-                           reply_markup=await choose_topping_keyboard(),
+                           reply_markup=await get_choose_topping_keyboard(),
                            parse_mode='HTML',
+                           )
+
+
+async def no_berries_handler(message: types.Message, state: FSMContext):
+    logger.info('No berries handler')
+    await CreateCakeFSM.add_decor.set()
+    async with state.proxy() as data:
+        data['berry'] = ""
+        total_cake_price = data['total_cake_price']
+    await bot.send_message(message.from_user.id,
+                           "Торт будет без ягод.\n\n"
+                           f"Общая стоимость: <b>{total_cake_price}</b> руб.\n\n"
+                           "Теперь выберите <b>декор</b> для торта. ",
+                           reply_markup=await get_choose_decor_keyboard(),
+                           parse_mode='HTML',
+                           )
+
+
+async def no_decoration_handler(message: types.Message, state: FSMContext):
+    logger.info('No decoration handler')
+    await CreateCakeFSM.add_decor.set()
+    async with state.proxy() as data:
+        data['decoration'] = ""
+        total_cake_price = data['total_cake_price']
+    await bot.send_message(message.from_user.id,
+                            "Торт будет без декора.\n\n"
+                            f"Общая стоимость: <b>{total_cake_price}</b> руб.\n\n",
+                            reply_markup=ReplyKeyboardRemove(),
+                            parse_mode='HTML',
+                            )
+    await bot.send_message(message.from_user.id,
+                           "✏ Мы можем разместить на торте любую <b>надпись</b>, "
+                           "например:\n\n <b>С днем рождения!</b>\n\n"
+                           "Если хотите добавить надпись, пришлите ее текст в ответном сообщении.\n\n"
+                           "Стоимость добавления надписи - <b>500 руб.</b>",
+                           reply_markup=await get_no_text_keyboard(),
+                           parse_mode='HTML'
                            )
 
 
@@ -99,6 +191,7 @@ async def web_app_data_handler(web_app_message, state: FSMContext):
         case 'cake':
             cake = await sync_to_async(Cake.objects.get)(id=item_id)
             async with state.proxy() as data:
+                data['standard'] = cake.standard
                 data['cake'] = cake
             await OrderFSM.add_text.set()
             await bot.send_message(chat_id,
@@ -118,15 +211,52 @@ async def web_app_data_handler(web_app_message, state: FSMContext):
             topping = await sync_to_async(Ingredients.objects.get)(id=item_id)
             async with state.proxy() as data:
                 data['topping'] = topping
+                data['total_cake_price'] += topping.current_price
+                total_cake_price = data['total_cake_price']
             await CreateCakeFSM.add_berries.set()
             await bot.send_message(chat_id,
-                                   f"Вы выбрали топпинг <b>{topping.name}</b>.\n\n"
+                                   f"Вы выбрали топпинг: <b>{topping.name}</b>.\n\n"
+                                   f"Общая стоимость: <b>{total_cake_price}</b> руб.\n\n"
                                    "Теперь можно выбрать ягоды, для этого, перейдите в "
                                    "каталог по дополнительной кнопке клавиатуры ⬇ и выберите одну из возможных ягод.",
                                    reply_markup=await get_choose_berry_keyboard(),
                                    parse_mode='HTML')
+        case 'berry':
+            berry = await sync_to_async(Ingredients.objects.get)(id=item_id)
+            async with state.proxy() as data:
+                data['berry'] = berry
+                data['total_cake_price'] += berry.current_price
+                total_cake_price = data['total_cake_price']
+            await CreateCakeFSM.add_decor.set()
+            await bot.send_message(chat_id,
+                                   f"Вы выбрали ягоду <b>{berry.name}</b>.\n\n"
+                                   f"Общая стоимость: <b>{total_cake_price}</b> руб.\n\n"
+                                   "Теперь можно выбрать декор, для этого, перейдите в "
+                                   "каталог по дополнительной кнопке клавиатуры ⬇ и выберите один из возможных декоров.",
+                                   reply_markup=await get_choose_decor_keyboard(),
+                                   parse_mode='HTML',
+                                   )
+        case 'decoration':
+            decoration = await sync_to_async(Ingredients.objects.get)(id=item_id)
 
-
+            async with state.proxy() as data:
+                data['decoration'] = decoration
+                data['total_cake_price'] += decoration.current_price
+                total_cake_price = data['total_cake_price']
+            await OrderFSM.add_text.set()
+            await bot.send_message(chat_id,
+                                   f"Вы выбрали декор <b>{decoration.name}</b>.\n\n"
+                                   f"Общая стоимость: <b>{total_cake_price}</b> руб.\n\n",
+                                   reply_markup=ReplyKeyboardRemove(),
+                                   parse_mode='HTML',
+                                   )
+            await bot.send_message(chat_id,
+                                   "✏ Мы можем разместить на торте любую <b>надпись</b>, "
+                                   "например:\n\n <b>С днем рождения!</b>\n\n"
+                                   "Если хотите добавить надпись, пришлите ее текст в ответном сообщении.\n\n"
+                                   "Стоимость добавления надписи - <b>500 руб.</b>",
+                                   reply_markup=await get_no_text_keyboard(),
+                                   parse_mode='HTML')
 
 
 add_comment_text = "💬 Если хотите, Вы можете написать "\
@@ -302,7 +432,8 @@ async def get_contact_name_handler(message: types.Message, state: FSMContext):
             text_price = 0
         else:
             text_price = 500
-        total_cake_price = cake.current_price + text_price
+        data['total_cake_price'] += text_price
+        total_cake_price = data['total_cake_price']
         cake_comment = data['comment']
         delivery_type = data['delivery_type']
         delivery_date = data['delivery_date']
@@ -315,19 +446,28 @@ async def get_contact_name_handler(message: types.Message, state: FSMContext):
         delivery_comment = data['delivery_comment']
         phone_number = data['phone_number']
         contact_name = data['contact_name']
-        data['total_cake_price'] = total_cake_price
+        standard = data['standard']
+        logger.info(f'standard: {standard}')
+        if not standard:
+            level = data['level']
+            form = data['form']
+            topping = data['topping']
+            berry = data['berry']
+            decoration = data['decoration']
+            logger.info({decoration})
     delivery_price = delivery_type.current_price
     logger.info(f'total_cake_price: {total_cake_price}')
     await OrderFSM.conformation.set()
-    logger.info({BASE_DIR})
-    picture_path = os.path.join(BASE_DIR, cake.picture.url.lstrip('/'))
-    logger.info(f'picture path {picture_path}')
-    picture = InputFile(picture_path)
-    await bot.send_photo(chat_id=message.from_user.id,
-                         caption=f"Вы собираетеcь заказать торт 🎂 <b>{cake.name}</b>\n\n",
-                         photo=picture,
-                         )
-    await message.answer("📝 Пожалуйста, проверьте правильность введенных данных:\n\n"
+    if standard:
+        logger.info({BASE_DIR})
+        picture_path = os.path.join(BASE_DIR, cake.picture.url.lstrip('/'))
+        logger.info(f'picture path {picture_path}')
+        picture = InputFile(picture_path)
+        await bot.send_photo(chat_id=message.from_user.id,
+                            caption=f"Вы собираетеcь заказать торт 🎂 <b>{cake.name}</b>\n\n",
+                            photo=picture,
+                            )
+        await message.answer("📝 Пожалуйста, проверьте правильность введенных данных:\n\n"
                          f"🎂 <b>Торт:</b> {cake.name}\n\n"
                          f"📝 <b>Надпись:</b> {cake_text}\n\n"
                          f"💬 <b>Комментарий к торту:</b> {cake_comment}\n\n"
@@ -342,9 +482,27 @@ async def get_contact_name_handler(message: types.Message, state: FSMContext):
                          reply_markup=await get_conformation_keyboard(),
                          parse_mode='HTML',
                          )
-
+    else:
+        await message.answer("📝 Пожалуйста, проверьте правильность введенных данных:\n\n"
+                             f"🎂 <b>Торт:</b> {cake.name}\n\n"
+                             f"📝 <b>Описание:</b> уровней - {level}, форма - {form}, топпинг - {topping}, "
+                             f"ягода - {berry}, декор - {decoration}\n\n"
+                             f"📝 <b>Надпись:</b> {cake_text}\n\n"
+                             f"💬 <b>Комментарий к торту:</b> {cake_comment}\n\n"
+                             f"🚚 <b>Способ доставки:</b> {delivery_type}\n\n"
+                             f"📅 <b>Дата доставки:</b> {delivery_date}\n\n"
+                             f"🕒 <b>Время доставки:</b> {delivery_start_time} - {delivery_end_time}\n\n"
+                             f"🏠 <b>Адрес доставки:</b> {delivery_address}\n\n"
+                             f"💬 <b>Комментарий для курьера:</b> {delivery_comment}\n\n"
+                             f"📞 <b>Номер телефона:</b> {phone_number}\n\n"
+                             f"👤 <b>Имя контактного лица:</b> {contact_name}\n\n"
+                             f"💰 <b>Итоговая стоимость торта c доставкой:</b> {total_cake_price + delivery_price}\n\n",
+                             reply_markup=await get_conformation_keyboard(),
+                             parse_mode='HTML',
+                             )
 
 async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
+    logger.info('Try to create order')
     chat_id = callback.from_user.id
     client = await sync_to_async(Client.objects.get)(chat_id=chat_id)
     status = await sync_to_async(OrderStatus.objects.get)(pk=1)
@@ -365,6 +523,7 @@ async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
                 contact_name=data['contact_name']
                 )
             moscow_tz = pytz.timezone('Europe/Moscow')
+            logger.info(f'Order number: {order.pk}')
             if data['delivery_type'].pk == 1:
                 delivery_time = await sync_to_async(DeliveryTime.objects.create)(
                     order=order,
@@ -378,6 +537,12 @@ async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
                     delivery_time=data['delivery_time'],
                     delivery_status='initial',
                 )
+            if not data['standard']:
+                order.ingredients.add(data['topping'])
+                if data['berry']:
+                    order.ingredients.add(data['berry'])
+                if data['decoration']:
+                    order.ingredients.add(data['decoration'])
     except:
         logger.error(f'Ошибка записи в базу данных, data: {data}', exc_info=True)
         await callback.message.answer(
@@ -393,7 +558,7 @@ async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
             parse_mode='HTML',
         )
     finally:
-        await  state.finish()
+        await state.finish()
 
 
 def register_user_handlers(dp: Dispatcher) -> None:
@@ -441,6 +606,16 @@ def register_user_handlers(dp: Dispatcher) -> None:
     dp.register_callback_query_handler(start_choose_cake_handler,
                                        lambda callback_query: callback_query.data == 'choose_cake',
                                        state='*',
+                                       )
+    dp.register_message_handler(no_berries_handler, state=CreateCakeFSM.add_berries)
+    dp.register_message_handler(no_decoration_handler, state=CreateCakeFSM.add_decor)
+    dp.register_callback_query_handler(choose_level_handler,
+                                       lambda callback_query: callback_query.data.startswith('level_'),
+                                       state=CreateCakeFSM.choose_level,
+                                       )
+    dp.register_callback_query_handler(choose_form_handler,
+                                       lambda callback_query: callback_query.data.startswith('form_'),
+                                       state=CreateCakeFSM.choose_form,
                                        )
 
 
