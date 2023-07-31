@@ -826,8 +826,8 @@ async def get_order_details_handler(callback: types.callback_query) -> None:
 def register_user_handlers(dp: Dispatcher) -> None:
     """Регистрация хэндлеров для пользователей."""
 
-    dp.register_message_handler(start, commands=['start'])
-    dp.register_message_handler(cancel_handler, commands=['cancel'])
+    dp.register_message_handler(start, commands=['start'], state='*')
+    dp.register_message_handler(cancel_handler, commands=['cancel'], state='*')
     dp.register_message_handler(web_app_data_handler, content_types='web_app_data', state='*')
     dp.register_callback_query_handler(no_text_handler,
                                        lambda callback_query: callback_query.data == 'no_text', state='*')
