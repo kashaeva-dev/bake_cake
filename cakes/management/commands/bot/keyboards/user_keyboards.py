@@ -195,7 +195,7 @@ async def get_choosing_order_from_keyboard():
 async def get_order_keyboard():
     # my_cakes_web_app_url = f"https://bakecake.6f6e69.xyz/my_cakes/{chat_id}"
     keyboard=[
-        [KeyboardButton(text="🍰 Стандартные торты", web_app=WebAppInfo(url="https://bit.ly/bakecake_cakes")), ],
+        [KeyboardButton(text="🍰 Стандартные торты", web_app=WebAppInfo(url="https://bakecake.6f6e69.xyz")), ],
         # [KeyboardButton(text="🛒 Из моих заказов", web_app=WebAppInfo(url="https://bakecake.6f6e69.xyz/my_cakes/")), ],
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)

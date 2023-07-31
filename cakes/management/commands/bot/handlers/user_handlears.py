@@ -68,9 +68,6 @@ class CreateCakeFSM(StatesGroup):
 
 async def start(message: types.Message):
     logger.info(f"message: {message.from_user.id}")
-    client, _ = await sync_to_async(Client.objects.get_or_create)(
-        chat_id=message.from_user.id
-    )
     await bot.send_message(message.from_user.id,
                            '🤖 ГЛАВНОЕ МЕНЮ:',
                            parse_mode='HTML',
@@ -645,11 +642,20 @@ async def get_contact_name_handler(message: types.Message, state: FSMContext):
 
 async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
     logger.info('Try to create order')
-    chat_id = callback.from_user.id
-    client = await sync_to_async(Client.objects.get)(chat_id=chat_id)
     status = await sync_to_async(OrderStatus.objects.get)(pk=1)
     try:
         async with state.proxy() as data:
+            try:
+                client, _ = await sync_to_async(Client.objects.get_or_create)(
+                    chat_id=callback.from_user.id,
+                    defaults={
+                        'personal_data_consent': True,
+                        'first_name': data['contact_name'],
+                    }
+                )
+                logger.info(f'{client}')
+            except:
+                logger.error('Не получилось добавить клиента в базу', exc_info=True)
             order = await sync_to_async(Order.objects.create)(
                 client=client,
                 cake=data['cake'],
@@ -719,6 +725,7 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
                            parse_mode='HTML',
                            reply_markup=await get_main_menu_keyboard(),
                            )
+
 
 async def get_my_orders_handler(callback: types.callback_query) -> None:
     logger.info('Try to get my orders')

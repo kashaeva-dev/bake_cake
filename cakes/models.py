@@ -21,12 +21,7 @@ class Client(models.Model):
     chat_id = models.PositiveBigIntegerField(verbose_name='ID чата клиента')
     first_name = models.CharField(max_length=40, verbose_name='Имя клиента', null=True)
     created_at = models.DateTimeField(verbose_name='Создано', auto_now_add=True)
-    personal_data_consent = models.BooleanField(verbose_name='Согласие на обработку персональных данных')
-    personal_data_consent_date = models.DateTimeField(auto_now_add=True,
-                                                      verbose_name='Дата согласия на ОПД',
-                                                      blank=True,
-                                                      null=True,
-                                                      )
+    personal_data_consent = models.BooleanField(verbose_name='Согласие на обработку персональных данных', default=False)
     advertisement = models.ForeignKey(Advertisement,
                                       on_delete=models.PROTECT,
                                       verbose_name='Рекламная кампания',
