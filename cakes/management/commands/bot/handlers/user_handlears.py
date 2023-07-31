@@ -651,7 +651,7 @@ async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
                     defaults={
                         'personal_data_consent': True,
                         'first_name': data['contact_name'],
-                    {
+                    }
                 )
                 logger.info(f'{client}')
             except:
