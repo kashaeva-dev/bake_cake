@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure--+uhp5!ml(ccy!o&v=tz9p++$3@et17o1&vh*vfcsv#6_g$8xd
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG', False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 
 # Application definition
@@ -134,4 +134,4 @@ MEDIA_URL = '/images/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 if __name__ == '__main__':
-    print(BASE_DIR)
+    print(ALLOWED_HOSTS)
