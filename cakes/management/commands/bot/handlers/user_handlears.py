@@ -27,7 +27,7 @@ from cakes.management.commands.bot.keyboards.user_keyboards import (
     get_choosing_order_from_keyboard,
     get_choose_topping_keyboard,
     get_choose_berry_keyboard, get_choose_decor_keyboard, get_choose_level_keyboard, get_choose_form_keyboard,
-    get_main_menu_keyboard,
+    get_main_menu_keyboard, get_my_orders_keyboard,
 )
 from cakes.models import (
     Cake,
@@ -253,6 +253,7 @@ async def web_app_data_handler(web_app_message, state: FSMContext):
             cake = await sync_to_async(Cake.objects.get)(id=item_id)
             async with state.proxy() as data:
                 data['standard'] = cake.standard
+                data['total_cake_price'] = cake.current_price
                 data['cake'] = cake
             await OrderFSM.add_text.set()
             await bot.send_message(chat_id,
@@ -443,10 +444,33 @@ async def choose_delivery_date_handler(callback: types.CallbackQuery, state: FSM
 async def choose_delivery_time_handler(callback: types.CallbackQuery, state: FSMContext):
     logger.info(f"choose_delivery_time_handler: {callback.data}")
     delivery_hour = callback.data.split('_')[-1]
-    async with state.proxy() as data:
-        data['delivery_time'] = datetime.time(int(delivery_hour), 0)
+    current_hour = datetime.datetime.now().hour
+    current_date = datetime.date.today()
+    tomorrow = current_date + datetime.timedelta(days=1)
+    logger.info(f"tomorrow: {tomorrow}")
     await OrderFSM.get_delivery_address.set()
-    await callback.message.edit_text("🏠 Пожалуйста, <b>укажите адрес доставки</b> в ответном сообщении:\n\n"
+    async with state.proxy() as data:
+        delivery_date = data['delivery_date']
+        is_urgent = tomorrow == delivery_date and int(delivery_hour) < int(current_hour)
+        logger.info(f"is_urgent: {is_urgent}")
+        data['delivery_time'] = datetime.time(int(delivery_hour), 0)
+        logger.info(f"delivery_time: {data['delivery_time']}")
+        if is_urgent:
+            logger.info(f"total_cake_price: {data['total_cake_price']}")
+            data['total_cake_price'] = int(int(data['total_cake_price']) * 1.2)
+        total_cake_price = data['total_cake_price']
+        logger.info(f"total_cake_price: {total_cake_price}")
+    if is_urgent:
+        await callback.message.answer("⚠️ <b>Срок доставки составляет менее 24-х часов,"
+                                          " стоимость торта будет увеличена на 20%.</b>\n\n"
+                                          f"Общая стоимость торта составит {total_cake_price} руб.\n\n"
+                                          "🏠 Пожалуйста, <b>укажите адрес доставки</b> в ответном сообщении:\n\n"
+                                          "📌 <i>Например: г. Москва, ул. Ленина, д. 1, кв. 1</i>",
+                                          reply_markup=await get_just_main_menu_keyboard(),
+                                          parse_mode='HTML',
+                                          )
+    else:
+        await callback.message.edit_text("🏠 Пожалуйста, <b>укажите адрес доставки</b> в ответном сообщении:\n\n"
                                      "📌 <i>Например: г. Москва, ул. Ленина, д. 1, кв. 1</i>",
                                      reply_markup=await get_just_main_menu_keyboard(),
                                      parse_mode='HTML',
@@ -552,7 +576,7 @@ async def get_contact_name_handler(message: types.Message, state: FSMContext):
                              f"📝 <b>Надпись:</b> {cake_text}\n\n"
                              f"💬 <b>Комментарий к торту:</b> {cake_comment}\n\n"
                              f"🚚 <b>Способ доставки:</b> {delivery_type}\n\n"
-                             f"📅 <b>Дата доставки:</b> {delivery_date}\n\n"
+                             f"📅 <b>Дата доставки:</b> {delivery_date.strftime('%d.%m.%Y')}\n\n"
                              f"🕒 <b>Время доставки:</b> {delivery_start_time} - {delivery_end_time}\n\n"
                              f"🏠 <b>Адрес доставки:</b> {delivery_address}\n\n"
                              f"💬 <b>Комментарий для курьера:</b> {delivery_comment}\n\n"
@@ -570,7 +594,7 @@ async def get_contact_name_handler(message: types.Message, state: FSMContext):
                                  f"📝 <b>Надпись:</b> {cake_text}\n\n"
                                  f"💬 <b>Комментарий к торту:</b> {cake_comment}\n\n"
                                  f"🚚 <b>Способ доставки:</b> {delivery_type}\n\n"
-                                 f"📅 <b>Дата доставки:</b> {delivery_date}\n\n"
+                                 f"📅 <b>Дата доставки:</b> {delivery_date.strftime('%d.%m.%Y')}\n\n"
                                  f"🕒 <b>Время доставки:</b> {delivery_start_time} - {delivery_end_time}\n\n"
                                  f"🏠 <b>Адрес доставки:</b> {delivery_address}\n\n"
                                  f"💬 <b>Комментарий для курьера:</b> {delivery_comment}\n\n"
@@ -595,7 +619,7 @@ async def get_contact_name_handler(message: types.Message, state: FSMContext):
                              f"📝 <b>Надпись:</b> {cake_text}\n\n"
                              f"💬 <b>Комментарий к торту:</b> {cake_comment}\n\n"
                              f"🚚 <b>Способ доставки:</b> {delivery_type}\n\n"
-                             f"📅 <b>Дата доставки:</b> {delivery_date}\n\n"
+                             f"📅 <b>Дата доставки:</b> {delivery_date.strftime('%d.%m.%Y')}\n\n"
                              f"📞 <b>Номер телефона:</b> {phone_number}\n\n"
                              f"👤 <b>Имя контактного лица:</b> {contact_name}\n\n"
                              f"💰 <b>Итоговая стоимость торта c доставкой:</b> {total_cake_price + delivery_price}\n\n",
@@ -610,7 +634,7 @@ async def get_contact_name_handler(message: types.Message, state: FSMContext):
                                  f"📝 <b>Надпись:</b> {cake_text}\n\n"
                                  f"💬 <b>Комментарий к торту:</b> {cake_comment}\n\n"
                                  f"🚚 <b>Способ доставки:</b> {delivery_type}\n\n"
-                                 f"📅 <b>Дата доставки:</b> {delivery_date}\n\n"
+                                 f"📅 <b>Дата доставки:</b> {delivery_date.strftime('%d.%m.%Y')}\n\n"
                                  f"📞 <b>Номер телефона:</b> {phone_number}\n\n"
                                  f"👤 <b>Имя контактного лица:</b> {contact_name}\n\n"
                                  f"💰 <b>Итоговая стоимость торта c доставкой:</b> {total_cake_price + delivery_price}\n\n",
@@ -696,6 +720,108 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
                            reply_markup=await get_main_menu_keyboard(),
                            )
 
+async def get_my_orders_handler(callback: types.callback_query) -> None:
+    logger.info('Try to get my orders')
+    client = await sync_to_async(Client.objects.get)(chat_id=callback.from_user.id)
+    logger.info(f'Client: {client}')
+    await callback.message.edit_text('Выберите заказ, чтобы посмотреть подробности:',
+                                     reply_markup=await get_my_orders_keyboard(client),
+                                     parse_mode='HTML',
+                                     )
+
+
+async def get_order_details_handler(callback: types.callback_query) -> None:
+    logger.info('Try to get order details')
+    client = await sync_to_async(Client.objects.get)(chat_id=callback.from_user.id)
+    logger.info(f'Client: {client}')
+    order_id = int(callback.data.split('_')[-1])
+    logger.info(f'Order id: {order_id}')
+    order = await sync_to_async(Order.objects.filter(pk=order_id)
+                                .select_related('cake')
+                                .select_related('delivery_type')
+                                .select_related('status')
+                                .prefetch_related('ingredients')
+                                .prefetch_related('delivery_time')
+                                .first)()
+    date = ''
+    time = ''
+    ingredients = []
+    async for delivery_time in order.delivery_time.all():
+        logger.info(f'Delivery time: {delivery_time.delivery_date} {delivery_time.delivery_time}')
+        date = delivery_time.delivery_date
+        time = delivery_time.delivery_time
+    logger.info(f'Order: {order.cake.name} {order.delivery_type.name} {date} {order.cake_comment}')
+    async for ingredient in order.ingredients.all():
+        ingredients.append(ingredient.name)
+    ingredients_str = ', '.join(ingredients)
+    logger.info(f'Ingredients: {ingredients_str}')
+    if order.delivery_type.pk != 1:
+        if order.cake.standard:
+            await callback.message.edit_text("📝 Данные Вашего заказа:\n\n"
+                                     f"🎂 <b>Торт:</b> {order.cake.name}\n\n"
+                                     f"📝 <b>Надпись:</b> {order.text}\n\n"
+                                     f"💬 <b>Комментарий к торту:</b> {order.cake_comment}\n\n"
+                                     f"🚚 <b>Способ доставки:</b> {order.delivery_type.name}\n\n"
+                                             f"📅 <b>Дата доставки:</b> {date.strftime('%d.%m.%Y')}\n\n"
+                                             f"🕒 <b>Время доставки:</b> в течение 2-х часов с {time}\n\n"
+                                     f"🏠 <b>Адрес доставки:</b> {order.delivery_address}\n\n"
+                                     f"💬 <b>Комментарий для курьера:</b> {order.delivery_comment}\n\n"
+                                     f"📞 <b>Номер телефона:</b> {order.contact_phone}\n\n"
+                                     f"👤 <b>Имя контактного лица:</b> {order.contact_name}\n\n"
+                                            f"👤 <b>Статус заказа:</b> {order.status.name}\n\n"
+                                     f"💰 <b>Итоговая стоимость торта c доставкой:</b> {order.total_cake_price + order.total_delivery_price}\n\n",
+                                     reply_markup=await get_just_main_menu_keyboard(),
+                                     parse_mode='HTML',
+                                     )
+        else:
+            await callback.message.edit_text("📝 Данные Вашего заказа:\n\n"
+                                     f"🎂 <b>Торт:</b> {order.cake.name}\n\n"
+                                             f"📝 <b>Ингредиенты:</b> {ingredients_str}\n\n"
+                                     f"📝 <b>Надпись:</b> {order.text}\n\n"
+                                     f"💬 <b>Комментарий к торту:</b> {order.cake_comment}\n\n"
+                                     f"🚚 <b>Способ доставки:</b> {order.delivery_type.name}\n\n"
+                                             f"📅 <b>Дата доставки:</b> {date.strftime('%d.%m.%Y')}\n\n"
+                                             f"🕒 <b>Время доставки:</b> в течение 2-х часов с {time}\n\n"
+                                     f"🏠 <b>Адрес доставки:</b> {order.delivery_address}\n\n"
+                                     f"💬 <b>Комментарий для курьера:</b> {order.delivery_comment}\n\n"
+                                     f"📞 <b>Номер телефона:</b> {order.contact_phone}\n\n"
+                                     f"👤 <b>Имя контактного лица:</b> {order.contact_name}\n\n"
+                                            f"👤 <b>Статус заказа:</b> {order.status.name}\n\n"
+                                     f"💰 <b>Итоговая стоимость торта c доставкой:</b> {order.total_cake_price + order.total_delivery_price}\n\n",
+                                     reply_markup=await get_just_main_menu_keyboard(),
+                                     parse_mode='HTML',
+                                     )
+    else:
+        if order.cake.standard:
+            await callback.message.edit_text("📝 Данные Вашего заказа:\n\n"
+                                             f"🎂 <b>Торт:</b> {order.cake.name}\n\n"
+                                             f"📝 <b>Надпись:</b> {order.text}\n\n"
+                                             f"💬 <b>Комментарий к торту:</b> {order.cake_comment}\n\n"
+                                             f"🚚 <b>Способ доставки:</b> {order.delivery_type.name}\n\n"
+                                             f"📅 <b>Дата самовывоза:</b> {date.strftime('%d.%m.%Y')}\n\n"
+                                             f"📞 <b>Номер телефона:</b> {order.contact_phone}\n\n"
+                                             f"👤 <b>Имя контактного лица:</b> {order.contact_name}\n\n"
+                                             f"👤 <b>Статус заказа:</b> {order.status.name}\n\n"
+                                             f"💰 <b>Итоговая стоимость торта c доставкой:</b> {order.total_cake_price + order.total_delivery_price}\n\n",
+                                             reply_markup=await get_just_main_menu_keyboard(),
+                                             parse_mode='HTML',
+                                             )
+        else:
+            await callback.message.edit_text("📝 Данные Вашего заказа:\n\n"
+                                             f"🎂 <b>Торт:</b> {order.cake.name}\n\n"
+                                             f"📝 <b>Ингредиенты:</b> {ingredients_str}\n\n"
+                                             f"📝 <b>Надпись:</b> {order.text}\n\n"
+                                             f"💬 <b>Комментарий к торту:</b> {order.cake_comment}\n\n"
+                                             f"🚚 <b>Способ доставки:</b> {order.delivery_type.name}\n\n"
+                                             f"📅 <b>Дата самовывоза:</b> {date.strftime('%d.%m.%Y')}\n\n"
+                                             f"📞 <b>Номер телефона:</b> {order.contact_phone}\n\n"
+                                             f"👤 <b>Имя контактного лица:</b> {order.contact_name}\n\n"
+                                             f"👤 <b>Статус заказа:</b> {order.status.name}\n\n"
+                                             f"💰 <b>Итоговая стоимость торта c доставкой:</b> {order.total_cake_price + order.total_delivery_price}\n\n",
+                                             reply_markup=await get_just_main_menu_keyboard(),
+                                             parse_mode='HTML',
+                                             )
+
 
 def register_user_handlers(dp: Dispatcher) -> None:
     """Регистрация хэндлеров для пользователей."""
@@ -763,6 +889,14 @@ def register_user_handlers(dp: Dispatcher) -> None:
     dp.register_callback_query_handler(get_main_menu_handler,
                                        lambda callback_query: callback_query.data == 'main_menu',
                                        state='*',
+                                       )
+    dp.register_callback_query_handler(get_my_orders_handler,
+                                        lambda callback_query: callback_query.data == 'my_orders',
+                                        state='*',
+                                       )
+    dp.register_callback_query_handler(get_order_details_handler,
+                                        lambda callback_query: callback_query.data.startswith('order_'),
+                                        state='*',
                                        )
 
 

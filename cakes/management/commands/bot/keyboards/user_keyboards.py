@@ -12,7 +12,7 @@ from aiogram.types import (
 from asgiref.sync import sync_to_async
 
 from cakes.logger_config import logger_config
-from cakes.models import DeliveryType, Level, Form
+from cakes.models import DeliveryType, Level, Form, Order, DeliveryTime
 
 logger = logging.getLogger("user_keyboards_logger")
 
@@ -40,6 +40,28 @@ async def get_main_menu_keyboard():
             InlineKeyboardButton(text='О нас', callback_data='FAQ'),
         ],
     ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_my_orders_keyboard(client):
+    logger.debug("get_my_orders_keyboard")
+    my_orders = await sync_to_async(Order.objects.filter)(client=client)
+    inline_keyboard = []
+    async for order in my_orders:
+        order_keyboard = [
+            [
+                InlineKeyboardButton(text=f'Заказ №{order.pk}', callback_data=f"order_{order.pk}"),
+            ]
+        ]
+        inline_keyboard += order_keyboard
+
+    main_menu_keyboard = [
+                [
+                    InlineKeyboardButton(text='Главное меню', callback_data='main_menu'),
+                ]
+            ]
+    inline_keyboard += main_menu_keyboard
+
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
