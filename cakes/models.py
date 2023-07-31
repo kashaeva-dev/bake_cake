@@ -103,7 +103,7 @@ class Cake(models.Model):
     level = models.ForeignKey(Level, on_delete=models.PROTECT, verbose_name='Количество уровней')
     form = models.ForeignKey(Form, on_delete=models.PROTECT, verbose_name='Форма')
     weight = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Вес', null=True, blank=True)
-    picture = models.ImageField(upload_to='cakes', verbose_name='Изображение', null=True, blank=True)
+    picture = models.ImageField(upload_to='cakes', verbose_name='Изображение', null=True)
     standard = models.BooleanField(default=True, verbose_name='Стандартный')
     current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
 
@@ -194,7 +194,7 @@ class DeliveryTime(models.Model):
                               related_name='delivery_time'
                               )
     delivery_date = models.DateField(verbose_name='Дата доставки')
-    delivery_time = models.TimeField(verbose_name='Время доставки')
+    delivery_time = models.TimeField(verbose_name='Время доставки', null=True, blank=True)
     delivery_status = models.CharField(max_length=40,
                                        verbose_name='Статус доставки',
                                        choices=DELIVERY_STATUS_CHOICES,

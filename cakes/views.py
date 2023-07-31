@@ -9,7 +9,7 @@ from .models import (
 
 # Create your views here.
 def index(request):
-    cakes = Cake.objects.all()
+    cakes = Cake.objects.filter(standard=True)
     return render(request, 'cakes/index.html', context={'cakes': cakes})
 
 

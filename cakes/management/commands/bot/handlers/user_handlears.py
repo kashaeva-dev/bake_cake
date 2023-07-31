@@ -12,7 +12,7 @@ from django.utils import timezone
 from environs import Env
 
 from aiogram import Dispatcher, Bot, types
-from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
+from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton, InputFile, ParseMode
 
 from cakes.logger_config import logger_config
 from cakes.management.commands.bot.keyboards.user_keyboards import (
@@ -27,6 +27,7 @@ from cakes.management.commands.bot.keyboards.user_keyboards import (
     get_choosing_order_from_keyboard,
     get_choose_topping_keyboard,
     get_choose_berry_keyboard, get_choose_decor_keyboard, get_choose_level_keyboard, get_choose_form_keyboard,
+    get_main_menu_keyboard,
 )
 from cakes.models import (
     Cake,
@@ -65,13 +66,73 @@ class CreateCakeFSM(StatesGroup):
     add_berries = State()
     add_decor = State()
 
-
 async def start(message: types.Message):
     logger.info(f"message: {message.from_user.id}")
+    client, _ = await sync_to_async(Client.objects.get_or_create)(
+        chat_id=message.from_user.id
+    )
     await bot.send_message(message.from_user.id,
-                           "Пожалуйста, выберите один из пунктов меню:",
-                           reply_markup=await get_choosing_order_from_keyboard(),
+                           '🤖 ГЛАВНОЕ МЕНЮ:',
+                           parse_mode='HTML',
+                           reply_markup=await get_main_menu_keyboard(),
                            )
+
+
+async def get_main_menu_handler(callback: types.CallbackQuery, state: FSMContext):
+    logger.info(f"Main menu handler")
+    await state.finish()
+    if state in [OrderFSM.web_app,
+                 OrderFSM.add_text,
+                 OrderFSM.add_comment,
+                 OrderFSM.choose_delivery_type,
+                 OrderFSM.choose_delivery_date,
+                 OrderFSM.choose_delivery_time,
+                 OrderFSM.get_delivery_address,
+                 OrderFSM.get_delivery_comment,
+                 OrderFSM.get_phone_number,
+                 OrderFSM.get_contact_name,
+                 OrderFSM.conformation,
+                 CreateCakeFSM.choose_level,
+                 CreateCakeFSM.choose_form,
+                 CreateCakeFSM.add_topping,
+                 CreateCakeFSM.add_berries,
+                 CreateCakeFSM.add_decor,
+                 ]:
+        await bot.send_message(callback.from_user.id,
+                           text='Вернулись к главному меню, все промежуточные данные очищены',
+                           reply_markup=ReplyKeyboardRemove())
+    await callback.message.edit_text('🤖 ГЛАВНОЕ МЕНЮ:',
+                                     parse_mode='HTML',
+                                     reply_markup=await get_main_menu_keyboard(),
+                                     )
+
+
+async def start_order_handler(callback: types.CallbackQuery):
+    logger.info(f"Start order handler")
+    await callback.message.edit_text("Пожалуйста, выберите один из пунктов меню:",
+                                     reply_markup=await get_choosing_order_from_keyboard(),
+                                     )
+
+
+async def FAQ_handler(callback: types.CallbackQuery):
+    logger.info(f"Start FAQ handler")
+    await callback.message.edit_text("Мы - семейная пекарня BakeCake!\n\n"
+                                     "Наша миссия - сделать так, чтобы Вы наслаждались вкусом!\n\n"
+                                     "Стоимость наших тортов зависит от начинки и составляет от "
+                                     "1000 руб. до 1800 руб. за 1 кг. торта.\n\n"
+                                     "У нас Вы можете заказать как стандартный торт из "
+                                     "каталога, так и собрать в конструкторе свой собственный торт, а "
+                                     "мы испечем и доставим его Вам.\n\n"
+                                     "🚚 Доставка возможна не ранее, чем на следующий день, при этом"
+                                     " если время между заказом и доставкой составляем менее 24 часов, "
+                                     "то стоимость торта увеличивается на 20%.\n\n"
+                                     "🏠 Вы также можете забрать готовый торт самостоятельно,\n"
+                                     "мы находимся по адресу: <b>Москва, м. Пражская, ул. Сосновая, д.45.</b>\n\n"
+                                     "📞 Наш телефон: +7 (495) 456-56-56.\n\n"
+                                     "Мы всегда Вам рады!",
+                                     reply_markup=await get_just_main_menu_keyboard(),
+                                     parse_mode='HTML',
+                                     )
 
 
 async def start_choose_cake_handler(callback: types.CallbackQuery):
@@ -345,6 +406,13 @@ async def prev_month_handler(callback: types.CallbackQuery):
                                      )
 
 
+get_phone_number_text = "📞 Пожалуйста, *укажите номер телефона* в ответном сообщении:\n\n"\
+                         "📌 Например: +7 (999) 999-99-99\n\n"\
+                         f"Продолжая, Вы даете свое [согласие на обработку персональных данных]"\
+                         f"(https://docs.google.com/document/"\
+                         f"d/1U-ZZa9bosHbqEbVwvgubUdR6T9gC33igDmEUMYVREQw/edit?usp=sharing).\n\n"
+
+
 async def choose_delivery_date_handler(callback: types.CallbackQuery, state: FSMContext):
     logger.info(f"choose_delivery_date_handler: {callback.data}")
     day, month, year = callback.data.split('_')[-3:]
@@ -354,7 +422,15 @@ async def choose_delivery_date_handler(callback: types.CallbackQuery, state: FSM
         data['delivery_date'] = delivery_date
         delivery_type = data['delivery_type']
     if delivery_type.id == 1:
-        pass
+        async with state.proxy() as data:
+            data['delivery_address'] = ''
+            data['delivery_comment'] = ''
+        await OrderFSM.get_phone_number.set()
+        await callback.message.edit_text(get_phone_number_text,
+                                         reply_markup=await get_just_main_menu_keyboard(),
+                                         parse_mode=ParseMode.MARKDOWN,
+                                         disable_web_page_preview=True,
+                                         )
     else:
         await OrderFSM.choose_delivery_time.set()
         await callback.message.edit_text("🕒 Выберите <b>время доставки</b>:\n\n"
@@ -362,6 +438,7 @@ async def choose_delivery_date_handler(callback: types.CallbackQuery, state: FSM
                                          reply_markup=await get_delivery_time_keyboard(),
                                          parse_mode='HTML',
                                          )
+
 
 async def choose_delivery_time_handler(callback: types.CallbackQuery, state: FSMContext):
     logger.info(f"choose_delivery_time_handler: {callback.data}")
@@ -374,6 +451,7 @@ async def choose_delivery_time_handler(callback: types.CallbackQuery, state: FSM
                                      reply_markup=await get_just_main_menu_keyboard(),
                                      parse_mode='HTML',
                                      )
+
 
 async def get_delivery_address_handler(message: types.Message, state: FSMContext):
     logger.info(f"get_delivery_address_handler: {message.text}")
@@ -392,10 +470,10 @@ async def no_delivery_comment_handler(callback: types.CallbackQuery, state: FSMC
     async with state.proxy() as data:
         data['delivery_comment'] = ''
     await OrderFSM.get_phone_number.set()
-    await callback.message.edit_text("📞 Пожалуйста, <b>укажите номер телефона</b> в ответном сообщении:\n\n"
-                                     "📌 <i>Например: +7 (999) 999-99-99</i>",
+    await callback.message.edit_text(get_phone_number_text,
                                      reply_markup=await get_just_main_menu_keyboard(),
-                                     parse_mode='HTML',
+                                     parse_mode=ParseMode.MARKDOWN,
+                                     disable_web_page_preview=True,
                                      )
 
 
@@ -404,10 +482,10 @@ async def get_delivery_comment_handler(message: types.Message, state: FSMContext
     async with state.proxy() as data:
         data['delivery_comment'] = message.text
     await OrderFSM.get_phone_number.set()
-    await message.answer("📞 Пожалуйста, <b>укажите номер телефона</b> в ответном сообщении:\n\n"
-                         "📌 <i>Например: +7 (999) 999-99-99</i>",
+    await message.answer(get_phone_number_text,
                          reply_markup=await get_just_main_menu_keyboard(),
-                         parse_mode='HTML',
+                         parse_mode=ParseMode.MARKDOWN,
+                         disable_web_page_preview=True,
                          )
 
 
@@ -438,12 +516,13 @@ async def get_contact_name_handler(message: types.Message, state: FSMContext):
         delivery_type = data['delivery_type']
         delivery_date = data['delivery_date']
         logger.info(f'{delivery_date}')
-        delivery_start_time = data['delivery_time'].strftime("%H:%M")
-        logger.info(f'{delivery_start_time}')
-        delivery_end_time = datetime.time((data['delivery_time'].hour + 2), 0).strftime("%H:%M")
-        logger.info(f'{delivery_start_time} - {delivery_end_time}')
-        delivery_address = data['delivery_address']
-        delivery_comment = data['delivery_comment']
+        if delivery_type.pk != 1:
+            delivery_start_time = data['delivery_time'].strftime("%H:%M")
+            logger.info(f'{delivery_start_time}')
+            delivery_end_time = datetime.time((data['delivery_time'].hour + 2), 0).strftime("%H:%M")
+            logger.info(f'{delivery_start_time} - {delivery_end_time}')
+            delivery_address = data['delivery_address']
+            delivery_comment = data['delivery_comment']
         phone_number = data['phone_number']
         contact_name = data['contact_name']
         standard = data['standard']
@@ -458,35 +537,18 @@ async def get_contact_name_handler(message: types.Message, state: FSMContext):
     delivery_price = delivery_type.current_price
     logger.info(f'total_cake_price: {total_cake_price}')
     await OrderFSM.conformation.set()
-    if standard:
-        logger.info({BASE_DIR})
-        picture_path = os.path.join(BASE_DIR, cake.picture.url.lstrip('/'))
-        logger.info(f'picture path {picture_path}')
-        picture = InputFile(picture_path)
-        await bot.send_photo(chat_id=message.from_user.id,
-                            caption=f"Вы собираетеcь заказать торт 🎂 <b>{cake.name}</b>\n\n",
-                            photo=picture,
-                            )
-        await message.answer("📝 Пожалуйста, проверьте правильность введенных данных:\n\n"
-                         f"🎂 <b>Торт:</b> {cake.name}\n\n"
-                         f"📝 <b>Надпись:</b> {cake_text}\n\n"
-                         f"💬 <b>Комментарий к торту:</b> {cake_comment}\n\n"
-                         f"🚚 <b>Способ доставки:</b> {delivery_type}\n\n"
-                         f"📅 <b>Дата доставки:</b> {delivery_date}\n\n"
-                         f"🕒 <b>Время доставки:</b> {delivery_start_time} - {delivery_end_time}\n\n"
-                         f"🏠 <b>Адрес доставки:</b> {delivery_address}\n\n"
-                         f"💬 <b>Комментарий для курьера:</b> {delivery_comment}\n\n"
-                         f"📞 <b>Номер телефона:</b> {phone_number}\n\n"
-                         f"👤 <b>Имя контактного лица:</b> {contact_name}\n\n"
-                         f"💰 <b>Итоговая стоимость торта c доставкой:</b> {total_cake_price + delivery_price}\n\n",
-                         reply_markup=await get_conformation_keyboard(),
-                         parse_mode='HTML',
-                         )
-    else:
-        await message.answer("📝 Пожалуйста, проверьте правильность введенных данных:\n\n"
+    if delivery_type.pk != 1:
+        if standard:
+            logger.info({BASE_DIR})
+            picture_path = os.path.join(BASE_DIR, cake.picture.url.lstrip('/'))
+            logger.info(f'picture path {picture_path}')
+            picture = InputFile(picture_path)
+            await bot.send_photo(chat_id=message.from_user.id,
+                                caption=f"Вы собираетеcь заказать торт 🎂 <b>{cake.name}</b>\n\n",
+                                photo=picture,
+                                )
+            await message.answer("📝 Пожалуйста, проверьте правильность введенных данных:\n\n"
                              f"🎂 <b>Торт:</b> {cake.name}\n\n"
-                             f"📝 <b>Описание:</b> уровней - {level}, форма - {form}, топпинг - {topping}, "
-                             f"ягода - {berry}, декор - {decoration}\n\n"
                              f"📝 <b>Надпись:</b> {cake_text}\n\n"
                              f"💬 <b>Комментарий к торту:</b> {cake_comment}\n\n"
                              f"🚚 <b>Способ доставки:</b> {delivery_type}\n\n"
@@ -500,6 +562,62 @@ async def get_contact_name_handler(message: types.Message, state: FSMContext):
                              reply_markup=await get_conformation_keyboard(),
                              parse_mode='HTML',
                              )
+        else:
+            await message.answer("📝 Пожалуйста, проверьте правильность введенных данных:\n\n"
+                                 f"🎂 <b>Торт:</b> {cake.name}\n\n"
+                                 f"📝 <b>Описание:</b> уровней - {level}, форма - {form}, топпинг - {topping}, "
+                                 f"ягода - {berry}, декор - {decoration}\n\n"
+                                 f"📝 <b>Надпись:</b> {cake_text}\n\n"
+                                 f"💬 <b>Комментарий к торту:</b> {cake_comment}\n\n"
+                                 f"🚚 <b>Способ доставки:</b> {delivery_type}\n\n"
+                                 f"📅 <b>Дата доставки:</b> {delivery_date}\n\n"
+                                 f"🕒 <b>Время доставки:</b> {delivery_start_time} - {delivery_end_time}\n\n"
+                                 f"🏠 <b>Адрес доставки:</b> {delivery_address}\n\n"
+                                 f"💬 <b>Комментарий для курьера:</b> {delivery_comment}\n\n"
+                                 f"📞 <b>Номер телефона:</b> {phone_number}\n\n"
+                                 f"👤 <b>Имя контактного лица:</b> {contact_name}\n\n"
+                                 f"💰 <b>Итоговая стоимость торта c доставкой:</b> {total_cake_price + delivery_price}\n\n",
+                                 reply_markup=await get_conformation_keyboard(),
+                                 parse_mode='HTML',
+                                 )
+    else:
+        if standard:
+            logger.info({BASE_DIR})
+            picture_path = os.path.join(BASE_DIR, cake.picture.url.lstrip('/'))
+            logger.info(f'picture path {picture_path}')
+            picture = InputFile(picture_path)
+            await bot.send_photo(chat_id=message.from_user.id,
+                                caption=f"Вы собираетеcь заказать торт 🎂 <b>{cake.name}</b>\n\n",
+                                photo=picture,
+                                )
+            await message.answer("📝 Пожалуйста, проверьте правильность введенных данных:\n\n"
+                             f"🎂 <b>Торт:</b> {cake.name}\n\n"
+                             f"📝 <b>Надпись:</b> {cake_text}\n\n"
+                             f"💬 <b>Комментарий к торту:</b> {cake_comment}\n\n"
+                             f"🚚 <b>Способ доставки:</b> {delivery_type}\n\n"
+                             f"📅 <b>Дата доставки:</b> {delivery_date}\n\n"
+                             f"📞 <b>Номер телефона:</b> {phone_number}\n\n"
+                             f"👤 <b>Имя контактного лица:</b> {contact_name}\n\n"
+                             f"💰 <b>Итоговая стоимость торта c доставкой:</b> {total_cake_price + delivery_price}\n\n",
+                             reply_markup=await get_conformation_keyboard(),
+                             parse_mode='HTML',
+                             )
+        else:
+            await message.answer("📝 Пожалуйста, проверьте правильность введенных данных:\n\n"
+                                 f"🎂 <b>Торт:</b> {cake.name}\n\n"
+                                 f"📝 <b>Описание:</b> уровней - {level}, форма - {form}, топпинг - {topping}, "
+                                 f"ягода - {berry}, декор - {decoration}\n\n"
+                                 f"📝 <b>Надпись:</b> {cake_text}\n\n"
+                                 f"💬 <b>Комментарий к торту:</b> {cake_comment}\n\n"
+                                 f"🚚 <b>Способ доставки:</b> {delivery_type}\n\n"
+                                 f"📅 <b>Дата доставки:</b> {delivery_date}\n\n"
+                                 f"📞 <b>Номер телефона:</b> {phone_number}\n\n"
+                                 f"👤 <b>Имя контактного лица:</b> {contact_name}\n\n"
+                                 f"💰 <b>Итоговая стоимость торта c доставкой:</b> {total_cake_price + delivery_price}\n\n",
+                                 reply_markup=await get_conformation_keyboard(),
+                                 parse_mode='HTML',
+                                 )
+
 
 async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
     logger.info('Try to create order')
@@ -522,12 +640,11 @@ async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
                 contact_phone=data['phone_number'],
                 contact_name=data['contact_name']
                 )
-            moscow_tz = pytz.timezone('Europe/Moscow')
             logger.info(f'Order number: {order.pk}')
             if data['delivery_type'].pk == 1:
                 delivery_time = await sync_to_async(DeliveryTime.objects.create)(
                     order=order,
-                    delivery_date=timezone.make_aware(data['delivery_date'], moscow_tz),
+                    delivery_date=data['delivery_date'],
                     delivery_status='initial',
                 )
             else:
@@ -537,12 +654,19 @@ async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
                     delivery_time=data['delivery_time'],
                     delivery_status='initial',
                 )
-            if not data['standard']:
-                order.ingredients.add(data['topping'])
+            logger.info(f'Delivery: {delivery_time.delivery_date} {delivery_time.delivery_time}')
+            if not order.cake.standard:
+                logger.info(f'Cake is not standard')
+                await sync_to_async(order.ingredients.add)(data['topping'])
+                await sync_to_async(order.save)()
+                get_first_topping = await sync_to_async(order.ingredients.first)()
+                logger.info(f'Ingredients: {get_first_topping.name}')
                 if data['berry']:
-                    order.ingredients.add(data['berry'])
+                    await sync_to_async(order.ingredients.add)(data['berry'])
+                    await sync_to_async(order.save)()
                 if data['decoration']:
-                    order.ingredients.add(data['decoration'])
+                    await sync_to_async(order.ingredients.add)(data['decoration'])
+                    await sync_to_async(order.save)()
     except:
         logger.error(f'Ошибка записи в базу данных, data: {data}', exc_info=True)
         await callback.message.answer(
@@ -561,10 +685,23 @@ async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
         await state.finish()
 
 
+async def cancel_handler(message: types.Message, state: FSMContext) -> None:
+    await state.finish()
+    await bot.send_message(message.from_user.id,
+                           text='Выполнена отмена, все промежуточные данные очищены',
+                           reply_markup=ReplyKeyboardRemove())
+    await bot.send_message(message.from_user.id,
+                           '🤖 ГЛАВНОЕ МЕНЮ:',
+                           parse_mode='HTML',
+                           reply_markup=await get_main_menu_keyboard(),
+                           )
+
+
 def register_user_handlers(dp: Dispatcher) -> None:
     """Регистрация хэндлеров для пользователей."""
 
     dp.register_message_handler(start, commands=['start'])
+    dp.register_message_handler(cancel_handler, commands=['cancel'])
     dp.register_message_handler(web_app_data_handler, content_types='web_app_data', state='*')
     dp.register_callback_query_handler(no_text_handler,
                                        lambda callback_query: callback_query.data == 'no_text', state='*')
@@ -617,7 +754,16 @@ def register_user_handlers(dp: Dispatcher) -> None:
                                        lambda callback_query: callback_query.data.startswith('form_'),
                                        state=CreateCakeFSM.choose_form,
                                        )
-
+    dp.register_callback_query_handler(start_order_handler,
+                                       lambda callback_query: callback_query.data == 'start_order',
+                                       )
+    dp.register_callback_query_handler(FAQ_handler,
+                                       lambda callback_query: callback_query.data == 'FAQ',
+                                       )
+    dp.register_callback_query_handler(get_main_menu_handler,
+                                       lambda callback_query: callback_query.data == 'main_menu',
+                                       state='*',
+                                       )
 
 
 if __name__ == "__main__":

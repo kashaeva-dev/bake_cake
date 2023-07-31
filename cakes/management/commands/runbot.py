@@ -19,11 +19,28 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 register_handlers(dp)
 
-@dp.message_handler(commands=['photo'])
-async def send_welcome(message: types.Message):
-    logger.info(f"message: {message.text}")
-    await bot.send_message(message.from_user.id, "Привет! Я бот, который поможет тебе выбрать торт на любой праздник!")
-    await bot.send_photo(message.from_user.id, types.InputFile('/Users/nataly/Projects/bake_cake/images/cakes/lilovoe_nastroenie.jpeg'))
+
+async def set_commands(bot: Bot):
+    commands = [
+            types.BotCommand(
+                command="/start",
+                description="Начало",
+            ),
+            types.BotCommand(
+                command="/admin",
+                description="Меню организатора",
+            ),
+            types.BotCommand(
+                command="/help",
+                description="Справка по работе бота",
+            ),
+            types.BotCommand(
+                command="/cancel",
+                description="Отмена текущего действия, возврат в главное меню",
+            ),
+        ]
+    await bot.set_my_commands(commands)
+
 
 class Command(BaseCommand):
     def handle(self, *args, **options):

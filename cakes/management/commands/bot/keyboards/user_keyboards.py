@@ -28,6 +28,21 @@ async def get_just_main_menu_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
+async def get_main_menu_keyboard():
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(text='Оформить заказ', callback_data='start_order'),
+        ],
+        [
+            InlineKeyboardButton(text='Мои заказы', callback_data='my_orders'),
+        ],
+        [
+            InlineKeyboardButton(text='О нас', callback_data='FAQ'),
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
 async def get_month_keyboard(month, year):
     logger.info(f"month: {month}, year: {year}")
     current_year = datetime.now().year
