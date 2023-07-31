@@ -45,12 +45,20 @@ async def get_main_menu_keyboard():
 
 async def get_my_orders_keyboard(client):
     logger.debug("get_my_orders_keyboard")
-    my_orders = await sync_to_async(Order.objects.filter)(client=client)
+    my_orders = await sync_to_async(Order.objects.filter(client=client)
+                                .select_related('cake')
+                                .select_related('delivery_type')
+                                .select_related('status')
+                                .prefetch_related('ingredients')
+                                .prefetch_related)('delivery_time')
+
     inline_keyboard = []
     async for order in my_orders:
+        async for delivery_time in order.delivery_time.all():
+            date = delivery_time.delivery_date
         order_keyboard = [
             [
-                InlineKeyboardButton(text=f'Заказ №{order.pk}', callback_data=f"order_{order.pk}"),
+                InlineKeyboardButton(text=f'Заказ №{order.pk}: {order.cake.name}, {date.strftime("%d.%m")}', callback_data=f"order_{order.pk}"),
             ]
         ]
         inline_keyboard += order_keyboard
