@@ -168,7 +168,8 @@ class Order(models.Model):
         if delivery_time_obj:
             planned_delivery_date = delivery_time_obj.delivery_date
             planned_delivery_start_time = delivery_time_obj.delivery_time
-            planned_delivery_end_time = datetime.time((planned_delivery_start_time.hour + 2), 0).strftime("%H:%M")
+            if planned_delivery_start_time:
+                planned_delivery_end_time = datetime.time((planned_delivery_start_time.hour + 2), 0).strftime("%H:%M")
             if self.delivery_address:
                 return f'{self.cake}: плановая доставка {planned_delivery_date} ' \
                        f'{planned_delivery_start_time.strftime("%H:%M")} - {planned_delivery_end_time} по адресу: {self.delivery_address}'
