@@ -729,9 +729,14 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
 
 async def get_my_orders_handler(callback: types.callback_query) -> None:
     logger.info('Try to get my orders')
-    client = await sync_to_async(Client.objects.get)(chat_id=callback.from_user.id)
-    logger.info(f'Client: {client}')
-    order_exist = await sync_to_async(Order.objects.filter(client=client).exists)()
+    order_exist = False
+    try:
+        client = await sync_to_async(Client.objects.get)(chat_id=callback.from_user.id)
+        logger.info(f'Client: {client}')
+        order_exist = await sync_to_async(Order.objects.filter(client=client).exists)()
+        logger.info(f'Order exist: {order_exist}')
+    except:
+        logger.error('Клиента нет в базе', exc_info=True)
     if order_exist:
         await callback.message.edit_text('Выберите заказ, чтобы посмотреть подробности:',
                                      reply_markup=await get_my_orders_keyboard(client),
