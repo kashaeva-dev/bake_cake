@@ -651,7 +651,7 @@ async def confirm_order(callback: types.CallbackQuery, state: FSMContext):
                     defaults={
                         'personal_data_consent': True,
                         'first_name': data['contact_name'],
-                    }
+                    {
                 )
                 logger.info(f'{client}')
             except:
@@ -731,10 +731,17 @@ async def get_my_orders_handler(callback: types.callback_query) -> None:
     logger.info('Try to get my orders')
     client = await sync_to_async(Client.objects.get)(chat_id=callback.from_user.id)
     logger.info(f'Client: {client}')
-    await callback.message.edit_text('Выберите заказ, чтобы посмотреть подробности:',
+    order_exist = await sync_to_async(Order.objects.filter(client=client).exists)()
+    if order_exist:
+        await callback.message.edit_text('Выберите заказ, чтобы посмотреть подробности:',
                                      reply_markup=await get_my_orders_keyboard(client),
                                      parse_mode='HTML',
                                      )
+    else:
+        await callback.message.edit_text('У Вас пока нет заказов',
+                                         reply_markup=await get_just_main_menu_keyboard(),
+                                         parse_mode='HTML',
+                                         )
 
 
 async def get_order_details_handler(callback: types.callback_query) -> None:
